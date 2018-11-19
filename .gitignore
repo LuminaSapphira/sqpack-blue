@@ -1,0 +1,8 @@
+target/**/*
+target/**/.*
+**/*.rs.bk
+**/*.dat
+**/Cargo.lock
+**/*.exd
+**/*.exh
+**/*.zlib
