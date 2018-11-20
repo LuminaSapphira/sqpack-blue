@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod basic {
     use super::super::*;
-    use std::time::{Duration, SystemTime};
+//    use std::time::{Duration, SystemTime};
 
     #[test]
     fn test_initialize_ffxiv() {
@@ -20,7 +20,7 @@ mod basic {
         path.push_str("/ffxiv/0a0000.win32.index");
 
         let mut file = File::open(&path).expect("not found");
-        let i = io::read_index_file(&mut file);
+        let i = io::read_index_file(&mut file).unwrap();
         let exd = i.get_file(0xE39B7999, 0xa41d4329)
             .expect("couldn't unwrap file in lib.rs");
         assert_eq!(exd.data_offset, 104770944);
@@ -44,14 +44,14 @@ mod basic {
         path_data.push_str("/ffxiv/0c0000.win32.dat0");
 
         let mut index = File::open(&path_index).expect("not found");
-        let index_scd = io::read_index_file(&mut index);
+        let index_scd = io::read_index_file(&mut index).unwrap();
         let scd_file_index = index_scd.get_file(0x0AF269D6, 0xe3b71579).unwrap();
 
         let mut dat_file =
             File::open(&path_data).expect("not found");
-        let scd = io::read_data_file(&mut dat_file, scd_file_index);
+        let scd = io::read_data_file(&mut dat_file, scd_file_index).unwrap();
 
-        use std::io::Write;
+//        use std::io::Write;
         let expected: [u8;16] = [0x43, 0x51, 0x52, 0x41, 0xA8, 0xE7, 0x8E, 0xCC, 0xD5, 0xE1, 0xB3, 0x3A, 0xBE, 0x89, 0xDB, 0xCC];
         let digest:[u8;16] = md5::compute(&scd).into();
         assert_eq!(expected, digest);

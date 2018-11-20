@@ -18,34 +18,34 @@ mod tests;
 use std::fs::File;
 use std::path::{Path,PathBuf};
 
-use byteorder::WriteBytesExt;
+//use byteorder::WriteBytesExt;
 
-pub fn get_data_offset(file: &mut File) -> u32 {
-
-//    let i = io::read_index_file(file);
-//    let exd = i.get_file(0xE39B7999, 0xa41d4329)
-//        .expect("couldn't unwrap file in lib.rs");
+//pub fn get_data_offset(file: &mut File) -> u32 {
 //
-//    let exh = i.get_file(0xE39B7999, 0xa0973a01)
-//        .expect("couldn't unwrap file in lib.rs");
+////    let i = io::read_index_file(file);
+////    let exd = i.get_file(0xE39B7999, 0xa41d4329)
+////        .expect("couldn't unwrap file in lib.rs");
+////
+////    let exh = i.get_file(0xE39B7999, 0xa0973a01)
+////        .expect("couldn't unwrap file in lib.rs");
+////
+////    let mut dat_file =
+////        File::open("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0a0000.win32.dat0").expect("not found");
+////
+////
+////    let m = io::read_data_file(&mut dat_file, exd);
+////    let mut out_file = File::create("bgm_0.exd").unwrap();
+////    for by in m {
+////        out_file.write_u8(by).unwrap();
+////    }
+////    let m2 = io::read_data_file(&mut dat_file, exh);
+////    let mut out_file2 = File::create("bgm.exh").unwrap();
+////    for by2 in m2 {
+////        out_file2.write_u8(by2).unwrap();
+////    }
 //
-//    let mut dat_file =
-//        File::open("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0a0000.win32.dat0").expect("not found");
-//
-//
-//    let m = io::read_data_file(&mut dat_file, exd);
-//    let mut out_file = File::create("bgm_0.exd").unwrap();
-//    for by in m {
-//        out_file.write_u8(by).unwrap();
-//    }
-//    let m2 = io::read_data_file(&mut dat_file, exh);
-//    let mut out_file2 = File::create("bgm.exh").unwrap();
-//    for by2 in m2 {
-//        out_file2.write_u8(by2).unwrap();
-//    }
-
-    3
-}
+//    3
+//}
 
 #[allow(dead_code)]
 enum GameExpansion {
@@ -68,10 +68,11 @@ pub struct FFXIV {
 #[derive(Debug)]
 pub enum FFXIVError {
     FileNotFound,
-    ReadingIndex,
-    ReadingDat,
-    DecodingEXD,
-    DecodingSCD
+    ReadingIndex(Box<std::error::Error>),
+    ReadingDat(Box<std::error::Error>),
+    DecodingEXD(Box<std::error::Error>),
+    DecodingSCD(Box<std::error::Error>),
+    MagicMissing,
 }
 
 impl std::fmt::Display for FFXIVError {
@@ -79,10 +80,11 @@ impl std::fmt::Display for FFXIVError {
         use FFXIVError::*;
         match self {
             FileNotFound => write!(f, "File not found in index."),
-            ReadingIndex => write!(f, "An error occurred while parsing the index file."),
-            ReadingDat => write!(f, "An error occurred while parsing the dat file."),
-            DecodingEXD => write!(f, "An error occurred while parsing the EXD file."),
-            DecodingSCD => write!(f, "An error occurred while parsing the SCD file."),
+            ReadingIndex(e) => write!(f, "An error occurred while parsing the index file. Inner error: {:?}", e),
+            ReadingDat(e) => write!(f, "An error occurred while parsing the dat file. Inner error: {:?}", e),
+            DecodingEXD(e) => write!(f, "An error occurred while parsing the EXD file. Inner error: {:?}", e),
+            DecodingSCD(e) => write!(f, "An error occurred while parsing the SCD file. Inner error: {:?}", e),
+            MagicMissing => write!(f, "The magic marker in a Square Enix file was missing."),
         }
     }
 }
