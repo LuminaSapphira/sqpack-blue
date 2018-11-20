@@ -59,14 +59,16 @@ pub fn read_file(file: &mut File, offset: u32) -> index::File {
     let file_hash = file.read_u32::<LittleEndian>().expect(format!("failed to get file hash, offset: {}", offset).as_str());
     let folder_hash = file.read_u32::<LittleEndian>().expect(format!("failed to get folder hash, offset: {}", offset).as_str());
 
-    let data_offset = file.read_u32::<LittleEndian>().expect(format!("failed to get data offset, offset: {}", offset).as_str()) * 0x08;
-
+    let base_offset = file.read_u32::<LittleEndian>().expect(format!("failed to get data offset, offset: {}", offset).as_str());
+    let dat_file = ((base_offset & 0x7) >> 1) as u8;
+    let data_offset = ((base_offset & 0xfffffff8) << 3) as u32;
     file.seek(SeekFrom::Start(current_pos)).expect(format!("failed to return to start, offset: {}", offset).as_str());
 
     index::File {
         file_hash,
         folder_hash,
-        data_offset
+        data_offset,
+        dat_file
     }
 }
 

@@ -5,7 +5,6 @@ use std::io::{Seek, SeekFrom};
 use std::io::prelude::*;
 use super::super::byteorder::{ReadBytesExt, LittleEndian};
 
-//use ::libflate::zlib::Decoder;
 use ::flate2::write::DeflateDecoder;
 
 pub enum ContentType {
