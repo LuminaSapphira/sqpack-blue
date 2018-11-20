@@ -6,3 +6,5 @@ target/**/.*
 **/*.exd
 **/*.exh
 **/*.zlib
+.idea/**/*
+*.iml
