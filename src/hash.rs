@@ -51,18 +51,14 @@ pub fn compute(val: &String) -> u32 {
     compute_with_seed(CRC_INITIAL_SEED, val.to_ascii_lowercase().as_bytes(), 0, val.as_bytes().len() as u32)
 }
 
-pub fn compute_path(val: &String) -> PathHash {
-    let mut char_pos = 0;
-    let mut chpo = 0;
-    for ch in val.chars() {
-        if ch == '/' {
-            char_pos = chpo;
-        }
-        chpo += 1;
-    }
-    let lower = val.to_ascii_lowercase();
-    let path_part = lower[0..char_pos].as_bytes();
-    let file_part = lower[char_pos + 1..].as_bytes();
+pub fn compute_path(expath_str: &String) -> PathHash {
+    let lower = expath_str.to_ascii_lowercase();
+    let spls: Vec<&str> = lower.split("/").collect::<Vec<&str>>();
+    let pstr = spls[0..spls.len()-1].join("/");
+    let path_part = pstr.as_bytes();
+    let fstr = spls[spls.len()-1];
+    let file_part = fstr.as_bytes();
+
     PathHash {
         folder_hash: compute_with_seed(CRC_INITIAL_SEED, path_part, 0, path_part.len() as u32),
         file_hash: compute_with_seed(CRC_INITIAL_SEED, file_part, 0, file_part.len() as u32),
