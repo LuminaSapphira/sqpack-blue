@@ -47,6 +47,57 @@ use std::path::{Path,PathBuf};
 //    3
 //}
 
+enum FileType {
+    Common,
+    BGCommon,
+    BG,
+    Cut,
+    Chara,
+    Shader,
+    UI,
+    Sound,
+    VFX,
+    UIScript,
+    EXD,
+    GameScript,
+    Music,
+    SqpackTest,
+    Debug,
+}
+
+impl FileType {
+    pub fn from_expath_string(expath_str: &String) -> Result<FileType, FFXIVError> {
+        let lower = val.to_ascii_lowercase();
+        let spls: &str = lower.split("/").next();
+        match spls {
+            "common" => Ok(FileType::Common),
+            "bgcommon" => Ok(FileType::BGCommon),
+            "bg" => Ok(FileType::BG),
+            "cut" => Ok(FileType::Cut),
+            "chara" => Ok(FileType::Chara),
+            "shader" => Ok(FileType::Shader),
+            "ui" => Ok(FileType::UI),
+            "sound" => Ok(FileType::Sound),
+            "vfx" => Ok(FileType::VFX),
+            "ui_script" => Ok(FileType::UIScript),
+            "exd" => Ok(FileType::EXD),
+            "game_script" => Ok(FileType::GameScript),
+            "music" => Ok(FileType::Music),
+            "_sqpack_test" => Ok(FileType::SqpackTest),
+            "_debug" => Ok(FileType::Debug),
+        }
+
+
+    }
+
+    pub fn get_sqpack_code(&self) -> String {
+        use FileType::*;
+        match self {
+            Common => String::from("")
+        }
+    }
+}
+
 #[allow(dead_code)]
 enum GameExpansion {
     FFXIV,
@@ -99,6 +150,11 @@ impl FFXIV {
         else {
             None
         }
+    }
+
+    pub fn get_expath(&self, exfile: &String) -> Result<ExPath, FFXIVError> {
+        unimplemented!()
+        //TODO impl
     }
 
     pub fn get_raw_data(&self, path: &ExPath) -> Result<Vec<u8>, FFXIVError> {
