@@ -7,14 +7,19 @@ mod basic {
 
     #[test]
     fn test_initialize_ffxiv() {
+        let path = std::env::var("sqpack").unwrap();
+
         let g =
-            FFXIV::new(Path::new("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack"));
+            FFXIV::new(Path::new(&path));
         g.unwrap();
     }
 
     #[test]
     fn test_decoding() {
-        let mut file = File::open("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0a0000.win32.index").expect("not found");
+        let mut path = std::env::var("sqpack").unwrap();
+        path.push_str("/ffxiv/0a0000.win32.index");
+
+        let mut file = File::open(&path).expect("not found");
         let i = io::read_index_file(&mut file);
         let exd = i.get_file(0xE39B7999, 0xa41d4329)
             .expect("couldn't unwrap file in lib.rs");
@@ -23,20 +28,27 @@ mod basic {
 
     #[test]
     fn test_export_raw_data() {
-        let ffxiv = FFXIV::new(Path::new("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack")).unwrap();
+        let path = std::env::var("sqpack").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
         ffxiv.get_raw_data(&ExPath{file_type: 3u8, expansion: GameExpansion::FFXIV}).unwrap_err();
     }
 
     #[test]
     fn test_scd_export() {
         extern crate md5;
+        let path = std::env::var("sqpack").unwrap();
+        let mut path_index = path.clone();
+        let mut path_data = path.clone();
+        path_index.push_str("/ffxiv/0c0000.win32.index");
+        path_data.push_str("/ffxiv/0c0000.win32.dat0");
 
-        let mut index = File::open("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0c0000.win32.index").expect("not found");
+        let mut index = File::open(&path_index).expect("not found");
         let index_scd = io::read_index_file(&mut index);
         let scd_file_index = index_scd.get_file(0x0AF269D6, 0xe3b71579).unwrap();
 
         let mut dat_file =
-            File::open("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0c0000.win32.dat0").expect("not found");
+            File::open(&path_data).expect("not found");
         let scd = io::read_data_file(&mut dat_file, scd_file_index);
 
         use std::io::Write;
