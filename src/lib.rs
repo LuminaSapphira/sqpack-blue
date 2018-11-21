@@ -67,6 +67,7 @@ enum FileType {
 
 impl FileType {
     pub fn from_expath_string(expath_str: &String) -> Result<FileType, FFXIVError> {
+
         let lower = val.to_ascii_lowercase();
         let spls: &str = lower.split("/").next();
         match spls {
@@ -91,9 +92,12 @@ impl FileType {
     }
 
     pub fn get_sqpack_code(&self) -> String {
+        
         use FileType::*;
         match self {
-            Common => String::from("")
+            Common => String::from("") // file name should be 0?0000.{index,dat} where the ? corresponds to file type
+            // but, in the actual files, the 4 zeroes afterwards also seem to mean something, but I do not know what.
+            // more research will be necessary
         }
     }
 }
