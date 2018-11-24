@@ -9,6 +9,7 @@ mod io;
 pub mod hash;
 mod ex;
 mod expack;
+mod sheet;
 
 pub use expack::{GameExpansion, FileType, ExFileIdentifier};
 
