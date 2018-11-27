@@ -1,5 +1,5 @@
 
-
+extern crate md5;
 #[cfg(test)]
 mod basic {
     use super::super::*;
@@ -27,16 +27,8 @@ mod basic {
     }
 
     #[test]
-    fn test_export_raw_data() {
-        let path = std::env::var("sqpack").unwrap();
+    fn test_manual_export() {
 
-        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
-        ffxiv.get_raw_data(&ExPath{file_type: 3u8, expansion: GameExpansion::FFXIV}).unwrap_err();
-    }
-
-    #[test]
-    fn test_scd_export() {
-        extern crate md5;
         let path = std::env::var("sqpack").unwrap();
         let mut path_index = path.clone();
         let mut path_data = path.clone();
@@ -57,8 +49,55 @@ mod basic {
         assert_eq!(expected, digest);
     }
 
+    #[test]
+    fn test_index_location() {
+        let path = std::env::var("sqpack").unwrap();
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+        let exfile = ffxiv.get_exfile(&String::from("music/ffxiv/bgm_system_title.scd")).unwrap();
+        assert_eq!(exfile.get_index_file(ffxiv.path.as_path()).as_os_str(),
+            "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0c0000.win32.index"
+        );
+    }
+
+    #[test]
+    fn test_get_index() {
+        let path = std::env::var("sqpack").unwrap();
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+        ffxiv.get_index(&ffxiv.get_exfile(&String::from("music/ffxiv/bgm_system_title.scd")).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn test_dat_file_identification() {
+        let path = std::env::var("sqpack").unwrap();
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+        let exfile = ffxiv.get_exfile(&String::from("music/ffxiv/bgm_system_title.scd")).unwrap();
+        let index_file =
+            ffxiv.get_index(&exfile).unwrap();
+        let phash = exfile.get_sqpack_hashcode();
+        let ifl = index_file.get_file(phash.folder_hash, phash.file_hash).unwrap();
+        let base_dat_path= exfile.get_dat_file(ffxiv.path.as_path(), ifl.dat_file);
+        assert_eq!(
+            "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0c0000.win32.dat0",
+            base_dat_path.as_os_str()
+        );
+    }
+
+    #[test]
+    fn test_export_raw_data() {
+        let path = std::env::var("sqpack").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+        let v = ffxiv.get_raw_data(
+            &ExFileIdentifier::new(
+                &String::from("music/ffxiv/bgm_system_title.scd")).unwrap()).unwrap();
+
+        let expected: [u8;16] = [0x43, 0x51, 0x52, 0x41, 0xA8, 0xE7, 0x8E, 0xCC, 0xD5, 0xE1, 0xB3, 0x3A, 0xBE, 0x89, 0xDB, 0xCC];
+        let digest:[u8;16] = md5::compute(&v.0).into();
+        assert_eq!(expected, digest);
+    }
+
 }
-// testing
+
 #[cfg(test)]
 mod hash {
     use super::super::*;
@@ -85,4 +124,23 @@ mod hash {
         assert_eq!(hash::compute(&String::from("bgm_system_title.scd")), hash::compute(&String::from("BGM_System_Title.scd")));
     }
 
+}
+
+#[cfg(test)]
+mod expack_test {
+    use super::super::*;
+
+    #[test]
+    fn test_expack() {
+        let path = std::env::var("sqpack").unwrap();
+        let apath = Path::new(&path);
+
+        let m = expack::ExFileIdentifier::new(&String::from("music/ex2/BGM_EX2_Dan_D09.scd")).unwrap();
+        let pbuff = m.get_index_file(apath);
+
+        let a = pbuff.as_os_str();
+        println!("{:?}", a);
+        assert_eq!(a, "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ex2\\0c0200.win32.index");
+
+    }
 }
