@@ -18,9 +18,7 @@ pub struct File {
 
 impl Index {
 
-
     pub fn new(folders: HashMap<u32, Folder>) -> Index {
-//        folders.iter().for_each(|i| println!("{}", *i.0));
         Index { folders }
     }
 
@@ -41,7 +39,6 @@ impl Index {
 
 impl Folder {
     pub fn new(hash: u32, files: HashMap<u32, File>) -> Folder {
-//        files.iter().for_each(|i| println!("{}", *i.0));
         Folder {folder_hash: hash, sub_files: files}
     }
 

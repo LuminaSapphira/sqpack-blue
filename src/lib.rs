@@ -3,9 +3,7 @@ extern crate flate2;
 
 mod index;
 mod io;
-//mod sheet;
 
-#[allow(dead_code)]
 pub mod hash;
 mod ex;
 mod expack;
@@ -36,7 +34,7 @@ pub enum FFXIVError {
     MagicMissing,
     UnknownFileType(String),
     UnknownExpansion(String),
-    CorruptFileName(String)
+    CorruptFileName(String),
 }
 
 impl std::fmt::Display for FFXIVError {
@@ -100,6 +98,29 @@ impl FFXIV {
             _ => Err(FFXIVError::FileNotFound)
         }
 
+    }
+
+    pub fn get_sheet(&self) {
+        unimplemented!();
+        // todo
+        /*
+
+            parameter: ex path
+            1. resolve ex path to .exh file
+            2. extract exh file and decode -> ExInfo
+            ExInfo {
+                Vec<ExLanguages>
+                ExLanguages: enum, see https://github.com/viion/ffxiv-datamining/blob/master/research/explorer_exhf_files
+                Vec<ExDataType>
+                Vec<ExPage>
+                ExPage {
+                    page_entry: u32 - page number (500 - item_500_en)
+                    count: u32 - # of entries in page
+                }
+            }
+            3.
+
+        */
     }
 
 
