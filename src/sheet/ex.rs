@@ -2,7 +2,8 @@
 pub struct SheetInfo {
     pub data_types: Vec<SheetDataType>,
     pub pages: Vec<SheetPage>,
-    pub languages: Vec<SheetLanguage>
+    pub languages: Vec<SheetLanguage>,
+    pub num_entries: u32
 }
 
 pub enum SheetLanguage {
@@ -36,25 +37,17 @@ pub struct SheetPage {
     pub page_size: u32
 }
 
-impl From<u16> for SheetLanguage {
-    fn from(val: u16) -> SheetLanguage {
-        match val {
-            0 => SheetLanguage::None,
-            1 => SheetLanguage::Japanese,
-            2 => SheetLanguage::English,
-            3 => SheetLanguage::German,
-            4 => SheetLanguage::French,
-            5 => SheetLanguage::ChineseS,
-            6 => SheetLanguage::ChineseT,
-            7 => SheetLanguage::Korean,
-        }
-    }
-}
-
 pub enum SheetDataType {
-    UInt(BasicInfo),
-    Int(BasicInfo),
     String(StringInfo),
+    Bool(BasicInfo),
+    Byte(BasicInfo),
+    UByte(BasicInfo),
+    Short(BasicInfo),
+    UShort(BasicInfo),
+    Int(BasicInfo),
+    UInt(BasicInfo),
+    Float(BasicInfo),
+    PackedInts(BasicInfo),
     BitFlags(BitFlagsInfo)
 }
 
@@ -62,10 +55,17 @@ impl SheetDataType {
     pub fn get_header(&self) -> String {
         match self {
             // todo add info to header?
-            SheetDataType::UInt(_) => String::from("uint32"),
-            SheetDataType::Int(_) => String::from("int32"),
             SheetDataType::String(_) => String::from("str"),
-            SheetDataType::BitFlags(_) => String::from("bitfl"),
+            SheetDataType::Bool(_) => String::from(" u1"),
+            SheetDataType::Byte(_) => String::from(" i8"),
+            SheetDataType::UByte(_) => String::from(" u8"),
+            SheetDataType::Short(_) => String::from("i16"),
+            SheetDataType::UShort(_) => String::from("u16"),
+            SheetDataType::Int(_) => String::from("i32"),
+            SheetDataType::UInt(_) => String::from("u32"),
+            SheetDataType::Float(_) => String::from("flt"),
+            SheetDataType::PackedInts(_) => String::from("pck"),
+            SheetDataType::BitFlags(_) => String::from("bit"),
         }
     }
 }

@@ -18,20 +18,20 @@ pub struct SheetRow<'sheet_lifetime> {
     pub types: &'sheet_lifetime Vec<SheetDataType>
 }
 
-trait FromSheet: Sized + std::fmt::Debug {
+pub trait FromSheet: Sized + std::fmt::Debug {
     type Error;
     fn from_ex_data(b: &SheetRow, cell: usize) -> Result<Self, Self::Error>;
 }
 
 #[derive(Debug)]
-enum SheetErrorType {
+pub enum SheetErrorType {
     Incompatible,
     CellOutOfBounds,
     StringProcessing
 }
 
 #[derive(Debug)]
-struct SheetError {
+pub struct SheetError {
     pub error_type: SheetErrorType
 }
 
@@ -52,7 +52,7 @@ impl std::fmt::Display for SheetError {
 impl FromSheet for u32 {
     type Error = SheetError;
     fn from_ex_data(b: &SheetRow, cell: usize) -> Result<Self, Self::Error> {
-        match b.typ.get(cell) {
+        match b.types.get(cell) {
             Some(get_result) => match get_result {
                 SheetDataType::UInt(info) => {
                     let end: usize = info.pointer as usize + 4;
@@ -68,7 +68,7 @@ impl FromSheet for u32 {
 impl FromSheet for i32 {
     type Error = SheetError;
     fn from_ex_data(b: &SheetRow, cell: usize) -> Result<Self, Self::Error> {
-        match b.typ.get(cell) {
+        match b.types.get(cell) {
             Some(get_result) => match get_result {
                 SheetDataType::Int(info) => {
                     let end: usize = info.pointer as usize + 4;
@@ -84,7 +84,7 @@ impl FromSheet for i32 {
 impl FromSheet for String {
     type Error = SheetError;
     fn from_ex_data(b: &SheetRow, cell: usize) -> Result<Self, Self::Error> {
-        match b.typ.get(cell) {
+        match b.types.get(cell) {
             Some(get_result) => match get_result {
                 SheetDataType::String(info) => {
                     let end: usize = info.pointer as usize + 4;
@@ -106,7 +106,7 @@ impl FromSheet for String {
     }
 }
 
-impl SheetRow {
+impl<'sheet_lifetime> SheetRow<'sheet_lifetime> {
     pub fn ex_data_into<T: FromSheet + std::fmt::Debug>(&self, cell: usize) -> Result<T, T::Error> {
         T::from_ex_data(self, cell)
     }

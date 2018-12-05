@@ -5,9 +5,8 @@ mod index;
 mod io;
 
 pub mod hash;
-mod ex;
 mod expack;
-mod sheet;
+pub mod sheet;
 
 pub use expack::{GameExpansion, FileType, ExFileIdentifier};
 
@@ -35,6 +34,7 @@ pub enum FFXIVError {
     UnknownFileType(String),
     UnknownExpansion(String),
     CorruptFileName(String),
+    Custom(String)
 }
 
 impl std::fmt::Display for FFXIVError {
@@ -50,6 +50,7 @@ impl std::fmt::Display for FFXIVError {
             UnknownFileType(file) => write!(f, "The type of the file was not understood. Requested file: \"{}\"", file),
             UnknownExpansion(file) => write!(f, "The expansion of the file was not understood. Requested file: \"{}\"", file),
             CorruptFileName(file) => write!(f, "Parsing of the file name failed. Requested file: \"{}\"", file),
+            Custom(s) => write!(f, "{}", s),
         }
     }
 }
