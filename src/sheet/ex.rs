@@ -37,6 +37,7 @@ pub struct SheetPage {
     pub page_size: u32
 }
 
+#[derive(Clone, Copy)]
 pub enum SheetDataType {
     String(StringInfo),
     Bool(BasicInfo),
@@ -70,17 +71,19 @@ impl SheetDataType {
     }
 }
 
-
+#[derive(Clone, Copy)]
 pub struct StringInfo {
     pub strings_offset: u32,
     pub pointer: u16
 }
 
+#[derive(Clone, Copy)]
 pub struct BitFlagsInfo {
     pub pointer: u16,
     pub bit: u8
 }
 
+#[derive(Clone, Copy)]
 pub struct BasicInfo {
     pub pointer: u16
 }

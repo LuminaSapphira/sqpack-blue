@@ -6,17 +6,31 @@ use std::error::Error;
 
 use self::ex::SheetDataType;
 
+use std::rc::Rc;
 
-pub struct Sheet<'sheet_lifetime> {
-    pub rows: Vec<SheetRow<'sheet_lifetime>>,
-    pub types: Vec<SheetDataType>
+
+pub struct Sheet {
+    pub rows: Vec<SheetRow>,
+    pub types: Rc<Vec<SheetDataType>>,
+    pub column_count: u32
 }
 
-pub struct SheetRow<'sheet_lifetime> {
+pub struct SheetRow {
     pub by: Vec<u8>,
-    pub num_cells: u32,
-    pub types: &'sheet_lifetime Vec<SheetDataType>
+    pub types: Rc<Vec<SheetDataType>>
 }
+
+/*
+
+{
+let sheet = decode_sheet(vec<u8>) -> Sheet;
+sheet.whateveR()
+
+}
+
+
+
+*/
 
 pub trait FromSheet: Sized + std::fmt::Debug {
     type Error;
@@ -106,7 +120,7 @@ impl FromSheet for String {
     }
 }
 
-impl<'sheet_lifetime> SheetRow<'sheet_lifetime> {
+impl SheetRow {
     pub fn ex_data_into<T: FromSheet + std::fmt::Debug>(&self, cell: usize) -> Result<T, T::Error> {
         T::from_ex_data(self, cell)
     }

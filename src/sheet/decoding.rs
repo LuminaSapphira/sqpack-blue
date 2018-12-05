@@ -1,4 +1,5 @@
 use super::ex::*;
+use super::{Sheet, SheetRow};
 use byteorder::BigEndian;
 use byteorder::ByteOrder;
 use ::FFXIVError;
@@ -123,8 +124,21 @@ fn decode_lang_table(exh_lang_table: &[u8], num_langs: &u16) -> Result<Vec<Sheet
 
 /// Decodes a sheet from bytes given the header info and the data file.
 /// Assumes the bytes in exd have already been page-concatenated.
-pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<u8>) {
-    unimplemented!()
+pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<u8>) -> Sheet {
+    use std::rc::Rc;
+    let types = Rc::new(exh.data_types.to_vec());
+    let mut sheet = Sheet {
+        rows: Vec::<SheetRow>::with_capacity(exh.num_entries as usize),
+        types: types.clone(),
+        column_count: exh.data_types.len() as u32
+    };
+    for i in 0..5 {
+        sheet.rows.push(SheetRow {
+            types: types.clone(),
+            by: vec![]
+        });
+    }
+    sheet
 }
 
 #[cfg(test)]
@@ -163,5 +177,35 @@ mod decode_test {
             SheetDataType::UByte(d) => assert_eq!(d.pointer, 0x9),
             _ => panic!("incorrect data type")
         };
+    }
+
+    #[test]
+    fn test_sheet_row_generation() {
+        let exh: Vec<u8> = vec![0x45, 0x58, 0x48, 0x46,
+                                0x00, 0x03, 0x00, 0x0C,
+                                0x00, 0x07, 0x00, 0x01,
+                                0x00, 0x01, 0x00, 0x00,
+                                0x00, 0x01, 0x00, 0x00,
+                                0x00, 0x00, 0x02, 0x52,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x03, 0x00, 0x08,
+                                0x00, 0x19, 0x00, 0x0A,
+                                0x00, 0x1A, 0x00, 0x0A,
+                                0x00, 0x1B, 0x00, 0x0A,
+                                0x00, 0x09, 0x00, 0x04,
+                                0x00, 0x03, 0x00, 0x09,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x02, 0x52,
+                                0x00, 0x00];
+        let val = decode_sheet_info(&exh).unwrap();
+        let m = decode_sheet_from_bytes(&val, &vec![]);
+        let sr: &SheetRow = m.rows.get(2).unwrap();
+        let ty: &SheetDataType = sr.types.get(0).unwrap();
+        match ty {
+            SheetDataType::String(d) => assert_eq!(d.pointer, 0),
+            _ => panic!("wrong sheet datas")
+        }
     }
 }
