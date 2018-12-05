@@ -5,11 +5,11 @@ use ::FFXIVError;
 
 /// A magic u32 present at the start of every EXHF File
 /// Encodes 'EXHF' in big-endian ASCII
-const EXHF_MAGIC: u32 = 0x46485845;
+const EXHF_MAGIC: u32 = 0x45584846;
+
 
 /// Decodes a Vec<u8> of the EXHF into a SheetInfo struct
 pub fn decode_sheet_info(exh: &Vec<u8>) -> Result<SheetInfo, FFXIVError> {
-
     if exh.len() < 0x18 {
         return Err(FFXIVError::DecodingEXD(
             Box::new(FFXIVError::Custom("Malformed data in EXHF - length < 0x18".into()))
@@ -35,7 +35,7 @@ pub fn decode_sheet_info(exh: &Vec<u8>) -> Result<SheetInfo, FFXIVError> {
         ));
     };
 
-    let dataset_table_start: usize = 0x2;
+    let dataset_table_start: usize = 0x20;
     let dataset_table_end: usize = dataset_table_start + 4 * num_types as usize;
     let page_table_start: usize = dataset_table_end.clone();
     let page_table_end: usize = page_table_start + 8 * num_pages as usize;
@@ -121,8 +121,47 @@ fn decode_lang_table(exh_lang_table: &[u8], num_langs: &u16) -> Result<Vec<Sheet
     Ok(langs)
 }
 
-/// Decodes a sheet from bytes given the header file and the data file.
+/// Decodes a sheet from bytes given the header info and the data file.
 /// Assumes the bytes in exd have already been page-concatenated.
-pub fn decode_sheet_from_bytes(exh: &Vec<u8>, exd: &Vec<u8>) {
+pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<u8>) {
     unimplemented!()
+}
+
+#[cfg(test)]
+mod decode_test {
+    use super::*;
+
+    #[test]
+    fn sheet_header_decode() {
+        let exh: Vec<u8> = vec![0x45, 0x58, 0x48, 0x46,
+                                0x00, 0x03, 0x00, 0x0C,
+                                0x00, 0x07, 0x00, 0x01,
+                                0x00, 0x01, 0x00, 0x00,
+                                0x00, 0x01, 0x00, 0x00,
+                                0x00, 0x00, 0x02, 0x52,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x03, 0x00, 0x08,
+                                0x00, 0x19, 0x00, 0x0A,
+                                0x00, 0x1A, 0x00, 0x0A,
+                                0x00, 0x1B, 0x00, 0x0A,
+                                0x00, 0x09, 0x00, 0x04,
+                                0x00, 0x03, 0x00, 0x09,
+                                0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x02, 0x52,
+                                0x00, 0x00];
+        let val = decode_sheet_info(&exh).unwrap();
+        assert_eq!(val.num_entries, 594);
+        assert_eq!(val.pages.get(0).unwrap().page_size, 594);
+
+        match val.languages.get(0).unwrap() {
+            SheetLanguage::None => {},
+            _ => panic!("incorrect language")
+        };
+        match val.data_types.get(6).unwrap() {
+            SheetDataType::UByte(d) => assert_eq!(d.pointer, 0x9),
+            _ => panic!("incorrect data type")
+        };
+    }
 }
