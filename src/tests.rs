@@ -96,6 +96,15 @@ mod basic {
         assert_eq!(expected, digest);
     }
 
+    #[test]
+    fn sheet_index() {
+        let path = std::env::var("sqpack").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+
+        let s = ffxiv.get_sheet_index().unwrap();
+    }
+
 }
 
 #[cfg(test)]

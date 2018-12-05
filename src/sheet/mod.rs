@@ -32,6 +32,8 @@ sheet.whateveR()
 
 */
 
+
+
 pub trait FromSheet: Sized + std::fmt::Debug {
     type Error;
     fn from_ex_data(b: &SheetRow, cell: usize) -> Result<Self, Self::Error>;

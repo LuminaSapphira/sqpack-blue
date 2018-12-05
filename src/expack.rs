@@ -170,6 +170,14 @@ pub struct ExFileIdentifier {
 impl ExFileIdentifier {
 
     pub fn new(expath_str: &String) -> Result<ExFileIdentifier, FFXIVError> {
+        if expath_str.len() >= 3 && &expath_str[0..3] == "exd" {
+            return Ok(ExFileIdentifier{
+                file_type: FileType::EXD,
+                expansion: GameExpansion::FFXIV,
+                number: 0,
+                exfile: expath_str.clone()
+            });
+        }
         let file_type = FileType::from_expath_string(expath_str)?;
         let expansion = GameExpansion::from_expath_string(expath_str)?;
         let number = parse_number(expath_str)?;
