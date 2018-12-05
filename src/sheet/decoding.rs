@@ -4,9 +4,12 @@ use byteorder::BigEndian;
 use byteorder::ByteOrder;
 use ::FFXIVError;
 
+use std::rc::Rc;
+
 /// A magic u32 present at the start of every EXHF File
 /// Encodes 'EXHF' in big-endian ASCII
 const EXHF_MAGIC: u32 = 0x45584846;
+const EXDF_MAGIC: u32 = 0x45584446;
 
 
 /// Decodes a Vec<u8> of the EXHF into a SheetInfo struct
@@ -122,23 +125,72 @@ fn decode_lang_table(exh_lang_table: &[u8], num_langs: &u16) -> Result<Vec<Sheet
     Ok(langs)
 }
 
-/// Decodes a sheet from bytes given the header info and the data file.
-/// Assumes the bytes in exd have already been page-concatenated.
-pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<u8>) -> Sheet {
-    use std::rc::Rc;
+/// Decodes a sheet from bytes given the header info and all pages of the data file.
+pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<&Vec<u8>>) -> Result<Sheet, FFXIVError> {
+
     let types = Rc::new(exh.data_types.to_vec());
     let mut sheet = Sheet {
         rows: Vec::<SheetRow>::with_capacity(exh.num_entries as usize),
         types: types.clone(),
         column_count: exh.data_types.len() as u32
     };
-    for i in 0..5 {
-        sheet.rows.push(SheetRow {
-            types: types.clone(),
-            by: vec![]
-        });
+
+    let mut page_index: usize = 0;
+    for page in &exh.pages {
+        let pexd: &&Vec<u8> = exd.get(page_index).unwrap();
+        if pexd.len() < 0x20 {
+            return Err(FFXIVError::DecodingEXD(
+                Box::new(FFXIVError::Custom(format!("Malformed data in EXDF - length < 0x20")))
+            ));
+        };
+
+        let magic: u32 = BigEndian::read_u32(&pexd[0..4]);
+        if magic != EXDF_MAGIC { return Err(FFXIVError::DecodingEXD(Box::new(FFXIVError::MagicMissing))) };
+
+
+
+        let offset_size: u32 = BigEndian::read_u32(&pexd[0x8..0xc]);
+        let data_size: u32 = BigEndian::read_u32(&pexd[0xc..0x10]);
+        let required_size = 0x20 as usize + offset_size as usize + data_size as usize;
+        if pexd.len() < required_size {
+            return Err(
+                FFXIVError::DecodingEXD(Box::new(
+                    FFXIVError::Custom(format!("Malformed data in EXDF. Actual size < Required Size, {} < {}",
+                        pexd.len(),
+                        required_size
+                    ))
+                ))
+            )
+        }
+
+        let offset_start: usize = 0x20;
+
+        for i in 0..page.page_size as usize {
+            let r_ind_start = offset_start + 8 * i;
+            let r_ind_end = r_ind_start + 4;
+            let r_off_start = r_ind_end.clone();
+            let r_off_end = r_off_start + 4;
+            let row_index: u32 = BigEndian::read_u32(&pexd[r_ind_start .. r_ind_end]);
+            let row_offset: u32 = BigEndian::read_u32(&pexd[r_off_start .. r_off_end]);
+            if sheet.rows.len() != row_index as usize {
+                return Err(FFXIVError::DecodingEXD(Box::new(FFXIVError::Custom(format!("Unsequential rows in EXDF")))));
+            }
+
+            let row_size: u32 = BigEndian::read_u32(&pexd[row_offset as usize .. row_offset as usize + 4]);
+            let row_slicer = row_offset as usize + 6;
+            let row_slicer_end = row_slicer + row_size as usize;
+            let row_slice: &[u8] = &pexd[row_slicer .. row_slicer_end];
+
+            sheet.rows.push(SheetRow {
+                types: types.clone(),
+                by: row_slice.to_vec()
+            });
+        }
+
+        page_index = page_index + 1;
     }
-    sheet
+
+    Ok(sheet)
 }
 
 #[cfg(test)]
@@ -147,24 +199,13 @@ mod decode_test {
 
     #[test]
     fn sheet_header_decode() {
-        let exh: Vec<u8> = vec![0x45, 0x58, 0x48, 0x46,
-                                0x00, 0x03, 0x00, 0x0C,
-                                0x00, 0x07, 0x00, 0x01,
-                                0x00, 0x01, 0x00, 0x00,
-                                0x00, 0x01, 0x00, 0x00,
-                                0x00, 0x00, 0x02, 0x52,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x03, 0x00, 0x08,
-                                0x00, 0x19, 0x00, 0x0A,
-                                0x00, 0x1A, 0x00, 0x0A,
-                                0x00, 0x1B, 0x00, 0x0A,
-                                0x00, 0x09, 0x00, 0x04,
-                                0x00, 0x03, 0x00, 0x09,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x02, 0x52,
-                                0x00, 0x00];
+        let exh_path = std::env::var("exh").unwrap();
+        use std::fs::File;
+        use std::io::Read;
+        let mut file_exh = File::open(exh_path).unwrap();
+        let mut exh: Vec<u8> = Vec::new();
+        file_exh.read_to_end(&mut exh).unwrap();
+
         let val = decode_sheet_info(&exh).unwrap();
         assert_eq!(val.num_entries, 594);
         assert_eq!(val.pages.get(0).unwrap().page_size, 594);
@@ -181,31 +222,22 @@ mod decode_test {
 
     #[test]
     fn test_sheet_row_generation() {
-        let exh: Vec<u8> = vec![0x45, 0x58, 0x48, 0x46,
-                                0x00, 0x03, 0x00, 0x0C,
-                                0x00, 0x07, 0x00, 0x01,
-                                0x00, 0x01, 0x00, 0x00,
-                                0x00, 0x01, 0x00, 0x00,
-                                0x00, 0x00, 0x02, 0x52,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x03, 0x00, 0x08,
-                                0x00, 0x19, 0x00, 0x0A,
-                                0x00, 0x1A, 0x00, 0x0A,
-                                0x00, 0x1B, 0x00, 0x0A,
-                                0x00, 0x09, 0x00, 0x04,
-                                0x00, 0x03, 0x00, 0x09,
-                                0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x02, 0x52,
-                                0x00, 0x00];
-        let val = decode_sheet_info(&exh).unwrap();
-        let m = decode_sheet_from_bytes(&val, &vec![]);
-        let sr: &SheetRow = m.rows.get(2).unwrap();
-        let ty: &SheetDataType = sr.types.get(0).unwrap();
-        match ty {
-            SheetDataType::String(d) => assert_eq!(d.pointer, 0),
-            _ => panic!("wrong sheet datas")
-        }
+        let exd_path = std::env::var("exd").unwrap();
+        let exh_path = std::env::var("exh").unwrap();
+        use std::fs::File;
+        use std::io::Read;
+        let mut file_exd = File::open(exd_path).unwrap();
+        let mut v: Vec<u8> = Vec::new();
+        file_exd.read_to_end(&mut v).unwrap();
+        let mut file_exh = File::open(exh_path).unwrap();
+        let mut exdv: Vec<u8> = Vec::new();
+        file_exh.read_to_end(&mut exdv).unwrap();
+
+
+        let val = decode_sheet_info(&exdv).unwrap();
+        let m = decode_sheet_from_bytes(&val, &vec![&v]).unwrap();
+        let sr: &SheetRow = m.rows.get(8).unwrap();
+        let title: String = sr.ex_data_into(0).unwrap();
+        assert_eq!("music/ffxiv/BGM_Field_Gri_01.scd", title);
     }
 }
