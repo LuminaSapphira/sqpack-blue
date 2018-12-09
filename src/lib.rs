@@ -8,6 +8,7 @@ pub mod hash;
 mod expack;
 pub mod sheet;
 
+mod scd;
 
 pub use expack::{GameExpansion, FileType, ExFileIdentifier};
 
@@ -147,6 +148,10 @@ impl FFXIV {
             Err(e) => Err(e)
         }
 
+    }
+
+    pub fn decode_sound(&self, data: Vec<u8>) -> Result<scd::SCDFile, FFXIVError> {
+        scd::SCDFile::decode(data)
     }
 
 //    pub fn get_music(&self, path: &ExPath) -> Result<scd::SCDData, FFXIVError> {
