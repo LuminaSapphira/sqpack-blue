@@ -1,10 +1,11 @@
 use super::ex::*;
 use super::{Sheet, SheetRow};
-use byteorder::BigEndian;
+use byteorder::{LittleEndian, BigEndian};
 use byteorder::ByteOrder;
 use ::FFXIVError;
 
 use std::rc::Rc;
+use std::collections::HashSet;
 
 /// A magic u32 present at the start of every EXHF File
 /// Encodes 'EXHF' in big-endian ASCII
@@ -102,11 +103,12 @@ fn decode_page_table(exh_page_table: &[u8], num_pages: &u16) -> Vec<SheetPage> {
     pages
 }
 
-fn decode_lang_table(exh_lang_table: &[u8], num_langs: &u16) -> Result<Vec<SheetLanguage>, FFXIVError> {
-    let mut langs = Vec::<SheetLanguage>::with_capacity(*num_langs as usize);
+fn decode_lang_table(exh_lang_table: &[u8], num_langs: &u16) -> Result<HashSet<SheetLanguage>, FFXIVError> {
+
+    let mut langs = HashSet::<SheetLanguage>::with_capacity(*num_langs as usize);
     for i in 0..*num_langs as usize {
-        let lang_code = BigEndian::read_u16(&exh_lang_table[i * 2 .. i * 2 + 2]);
-        langs.push(
+        let lang_code = LittleEndian::read_u16(&exh_lang_table[i * 2 .. i * 2 + 2]);
+        langs.insert(
             match lang_code {
                 0x0 => SheetLanguage::None,
                 0x1 => SheetLanguage::Japanese,
@@ -120,13 +122,13 @@ fn decode_lang_table(exh_lang_table: &[u8], num_langs: &u16) -> Result<Vec<Sheet
                     Box::new(FFXIVError::Custom(format!("Unknown language code: {}", unknown)))
                 ))
             }
-        )
+        );
     }
     Ok(langs)
 }
 
 /// Decodes a sheet from bytes given the header info and all pages of the data file.
-pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<&Vec<u8>>) -> Result<Sheet, FFXIVError> {
+pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<Vec<u8>>) -> Result<Sheet, FFXIVError> {
 
     let types = Rc::new(exh.data_types.to_vec());
     let mut sheet = Sheet {
@@ -137,7 +139,7 @@ pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<&Vec<u8>>) -> Result<S
 
     let mut page_index: usize = 0;
     for page in &exh.pages {
-        let pexd: &&Vec<u8> = exd.get(page_index).unwrap();
+        let pexd: &Vec<u8> = exd.get(page_index).unwrap();
         if pexd.len() < 0x20 {
             return Err(FFXIVError::DecodingEXD(
                 Box::new(FFXIVError::Custom(format!("Malformed data in EXDF - length < 0x20")))
@@ -210,10 +212,7 @@ mod decode_test {
         assert_eq!(val.num_entries, 594);
         assert_eq!(val.pages.get(0).unwrap().page_size, 594);
 
-        match val.languages.get(0).unwrap() {
-            SheetLanguage::None => {},
-            _ => panic!("incorrect language")
-        };
+        val.languages.get(&::sheet::ex::SheetLanguage::None).unwrap();
         match val.data_types.get(6).unwrap() {
             SheetDataType::UByte(d) => assert_eq!(d.pointer, 0x9),
             _ => panic!("incorrect data type")
@@ -235,9 +234,9 @@ mod decode_test {
 
 
         let val = decode_sheet_info(&exdv).unwrap();
-        let m = decode_sheet_from_bytes(&val, &vec![&v]).unwrap();
+        let m = decode_sheet_from_bytes(&val, &vec![v]).unwrap();
         let sr: &SheetRow = m.rows.get(8).unwrap();
-        let title: String = sr.ex_data_into(0).unwrap();
+        let title: String = sr.read_cell_data(0).unwrap();
         assert_eq!("music/ffxiv/BGM_Field_Gri_01.scd", title);
     }
 }

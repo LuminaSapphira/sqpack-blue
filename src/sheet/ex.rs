@@ -1,11 +1,13 @@
+use std::collections::HashSet;
 
 pub struct SheetInfo {
     pub data_types: Vec<SheetDataType>,
     pub pages: Vec<SheetPage>,
-    pub languages: Vec<SheetLanguage>,
+    pub languages: HashSet<SheetLanguage>,
     pub num_entries: u32
 }
 
+#[derive(Hash, PartialEq, Eq, Debug)]
 pub enum SheetLanguage {
     None,
     Japanese,
@@ -32,6 +34,17 @@ impl SheetLanguage {
     }
 }
 
+impl std::fmt::Display for SheetLanguage {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self.get_language_code() {
+            Some(val) => write!(f, "[SheetLanguage: {}]", val),
+            None => write!(f, "[SheetLanguage: None]"),
+
+        }
+
+    }
+}
+
 pub struct SheetPage {
     pub page_entry: u32,
     pub page_size: u32
@@ -55,18 +68,17 @@ pub enum SheetDataType {
 impl SheetDataType {
     pub fn get_header(&self) -> String {
         match self {
-            // todo add info to header?
-            SheetDataType::String(_) => String::from("str"),
-            SheetDataType::Bool(_) => String::from(" u1"),
-            SheetDataType::Byte(_) => String::from(" i8"),
-            SheetDataType::UByte(_) => String::from(" u8"),
-            SheetDataType::Short(_) => String::from("i16"),
-            SheetDataType::UShort(_) => String::from("u16"),
-            SheetDataType::Int(_) => String::from("i32"),
-            SheetDataType::UInt(_) => String::from("u32"),
-            SheetDataType::Float(_) => String::from("flt"),
-            SheetDataType::PackedInts(_) => String::from("pck"),
-            SheetDataType::BitFlags(_) => String::from("bit"),
+            SheetDataType::String(_) => String::from("string"),
+            SheetDataType::Bool(_) => String::from("bool"),
+            SheetDataType::Byte(_) => String::from("int8"),
+            SheetDataType::UByte(_) => String::from("uint8"),
+            SheetDataType::Short(_) => String::from("int16"),
+            SheetDataType::UShort(_) => String::from("uint16"),
+            SheetDataType::Int(_) => String::from("int32"),
+            SheetDataType::UInt(_) => String::from("uint32"),
+            SheetDataType::Float(_) => String::from("float"),
+            SheetDataType::PackedInts(_) => String::from("packed"),
+            SheetDataType::BitFlags(b_info) => String::from(format!("bitflags[{}]", b_info.bit)),
         }
     }
 }

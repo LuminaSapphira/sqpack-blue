@@ -8,6 +8,7 @@ pub mod hash;
 mod expack;
 pub mod sheet;
 
+
 pub use expack::{GameExpansion, FileType, ExFileIdentifier};
 
 mod tests;
@@ -34,6 +35,7 @@ pub enum FFXIVError {
     UnknownFileType(String),
     UnknownExpansion(String),
     CorruptFileName(String),
+    InvalidLanguage(sheet::ex::SheetLanguage, std::collections::HashSet<sheet::ex::SheetLanguage>),
     Custom(String)
 }
 
@@ -50,6 +52,7 @@ impl std::fmt::Display for FFXIVError {
             UnknownFileType(file) => write!(f, "The type of the file was not understood. Requested file: \"{}\"", file),
             UnknownExpansion(file) => write!(f, "The expansion of the file was not understood. Requested file: \"{}\"", file),
             CorruptFileName(file) => write!(f, "Parsing of the file name failed. Requested file: \"{}\"", file),
+            InvalidLanguage(req, acc) => write!(f, "The requested language was invalid! Requested: {:?}. Acceptable: {:?}", req, acc),
             Custom(s) => write!(f, "{}", s),
         }
     }
@@ -117,38 +120,35 @@ impl FFXIV {
         Ok(index::SheetIndex::new(index))
     }
 
+
     /// Extracts sheet data from the data files. Parses the data into a readable format.
     /// Takes a parameter which is the name of the sheet (without any preceeding exd/
     /// or .exh/exd file extension)
-    pub fn get_sheet(&self, exd: &String, sheet_index: index::SheetIndex) -> Result<sheet::Sheet, FFXIVError> {
+    pub fn get_sheet(&self, exd: &String, language: sheet::ex::SheetLanguage, sheet_index: &index::SheetIndex) -> Result<sheet::Sheet, FFXIVError> {
+        use sheet::ex::SheetLanguage;
+        let exh_path = String::from(format!("exd/{}.exh", exd.as_str()));
+        let exfile = self.get_exfile(&exh_path)?;
+        let header = self.get_raw_data_with_index(&exfile, &sheet_index.index)?;
+        let info = sheet::decoding::decode_sheet_info(&header)?;
+        if !info.languages.contains(&language) { return Err(FFXIVError::InvalidLanguage(language, info.languages)); };
+        let mut all_page_data = Vec::<Vec<u8>>::new();
+        for page in &info.pages {
+            let exd_path = if language == SheetLanguage::None {
+                String::from(format!("exd/{}_{}.exd", exd.as_str(), page.page_entry))
+            } else {
+                String::from(format!("exd/{}_{}_{}.exd", exd.as_str(), page.page_entry, language.get_language_code().unwrap()))
+            };
+            let page_exfile = self.get_exfile(&exd_path)?;
+            let page_data = self.get_raw_data_with_index(&page_exfile, &sheet_index.index)?;
+            all_page_data.push(page_data);
+        }
+        match sheet::decoding::decode_sheet_from_bytes(&info, &all_page_data) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(e)
+        }
 
-        unimplemented!();
-        // todo
-        /*
-
-            parameter: ex path
-            1. resolve ex path to .exh file
-            2. extract exh file and decode -> ExInfo
-            ExInfo {
-                Vec<ExLanguages>
-                ExLanguages: enum, see https://github.com/viion/ffxiv-datamining/blob/master/research/explorer_exhf_files
-                Vec<ExDataType>
-                Vec<ExPage>
-                ExPage {
-                    page_entry: u32 - page number (500 - item_500_en)
-                    count: u32 - # of entries in page
-                }
-            }
-            3.
-
-        */
     }
 
-
-//    pub fn get_sheet(&self, path: &ExPath) -> Result<sheet::Sheet, FFXIVError> {
-//        unimplemented!()
-//    }
-//
 //    pub fn get_music(&self, path: &ExPath) -> Result<scd::SCDData, FFXIVError> {
 //        unimplemented!()
 //    }

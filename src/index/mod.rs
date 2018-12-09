@@ -5,7 +5,7 @@ pub struct Index {
 }
 
 pub struct SheetIndex {
-    index: Index
+    pub index: Index
 }
 
 pub struct Folder {

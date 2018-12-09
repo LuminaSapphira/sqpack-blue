@@ -1,7 +1,8 @@
 
-extern crate md5;
+
 #[cfg(test)]
 mod basic {
+    extern crate md5;
     use super::super::*;
 //    use std::time::{Duration, SystemTime};
 
@@ -105,6 +106,133 @@ mod basic {
         let s = ffxiv.get_sheet_index().unwrap();
     }
 
+    #[test]
+    fn sheet_load_no_language() {
+        let path = std::env::var("sqpack").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+
+        let s = ffxiv.get_sheet_index().unwrap();
+        ffxiv.get_sheet(&String::from("bgm"),
+                        ::sheet::ex::SheetLanguage::None, &s).unwrap();
+
+    }
+
+    #[test]
+    fn sheet_load_language() {
+        let path = std::env::var("sqpack").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+
+        let s = ffxiv.get_sheet_index().unwrap();
+        let sheet_result =
+            ffxiv.get_sheet(&String::from("achievement"),
+                            ::sheet::ex::SheetLanguage::None, &s);
+
+        match sheet_result {
+            Ok(v) => panic!("Should not be possible to load without language"),
+            _ => (),
+        };
+
+        let sheet_result_2 =
+            ffxiv.get_sheet(&String::from("achievement"),
+                            ::sheet::ex::SheetLanguage::English, &s);
+        let sheet = sheet_result_2.unwrap();
+        let row: String = sheet.rows.get(28).unwrap().read_cell_data(1).unwrap();
+        assert_eq!(row, "The Sweet Science V")
+    }
+
+    #[test]
+    fn sheet_load_items() {
+        let path = std::env::var("sqpack").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+
+        let s = ffxiv.get_sheet_index().unwrap();
+        let sheet = ffxiv.get_sheet(&String::from("item"),
+                        ::sheet::ex::SheetLanguage::English, &s).unwrap();
+        let omg: String = sheet.rows[23991].read_cell_data(0).unwrap();
+        assert_eq!(omg, "OMG");
+    }
+
+    #[test]
+    fn check_float_load() {
+        use ::byteorder::BigEndian;
+        use ::byteorder::ByteOrder;
+        let f: f32 = BigEndian::read_f32(&vec![0x42, 0xb4, 0x00, 0x00]);
+        assert_eq!(f, 90.0f32);
+    }
+
+    #[test]
+    fn csv_ify() {
+        let path = std::env::var("sqpack").unwrap();
+        let out = std::env::var("out").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+
+        let s = ffxiv.get_sheet_index().unwrap();
+        let sheet = ffxiv.get_sheet(&String::from("bgm"),
+                        ::sheet::ex::SheetLanguage::None, &s).unwrap();
+
+        let mut bgm = File::create(out).unwrap();
+        use std::io::Write;
+        write!(bgm, "\"index\",");
+        sheet.types.iter().enumerate().for_each(|(index, typ)| {
+            if index == sheet.types.len() - 1 {
+                write!(bgm, "\"{}\"", typ.get_header());
+            } else {
+                write!(bgm, "\"{}\",", typ.get_header());
+            }
+        });
+        writeln!(bgm, "");
+        sheet.rows.iter().enumerate().for_each(|(index, row)| {
+            write!(bgm, "\"{}\",", index);
+            row.types.iter().enumerate().for_each(|(index_typ, typ)| {
+                use ::sheet::ex::SheetDataType;
+                use ::sheet::BitFlags;
+                match typ {
+                    SheetDataType::String(s_info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<String>(index_typ).unwrap()),
+                    SheetDataType::Bool(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<bool>(index_typ).unwrap()),
+                    SheetDataType::Byte(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<i8>(index_typ).unwrap()),
+                    SheetDataType::UByte(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<u8>(index_typ).unwrap()),
+                    SheetDataType::Short(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<i16>(index_typ).unwrap()),
+                    SheetDataType::UShort(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<u16>(index_typ).unwrap()),
+                    SheetDataType::Int(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<i32>(index_typ).unwrap()),
+                    SheetDataType::UInt(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<u32>(index_typ).unwrap()),
+                    SheetDataType::Float(info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data::<f32>(index_typ).unwrap()),
+                    SheetDataType::PackedInts(info) =>
+                        write!(bgm, "\"unsupported\""),
+                    SheetDataType::BitFlags(b_info) =>
+                        write!(bgm, "\"{}\"", row.read_cell_data
+                            ::<BitFlags>(index_typ).unwrap().get_bool(b_info.bit.clone())),
+
+                };
+                if index_typ != row.types.len() - 1 {
+                    write!(bgm, ",");
+                }
+            });
+            writeln!(bgm, "");
+        });
+
+    }
+
+    #[test]
+    fn check_bit_algo() {
+        use ::sheet::BitFlags;
+        let bf = BitFlags {data: 6u8};
+        assert_eq!(bf.get_bool(0), false);
+        assert_eq!(bf.get_bool(1), true);
+        assert_eq!(bf.get_bool(2), true);
+    }
 }
 
 #[cfg(test)]
