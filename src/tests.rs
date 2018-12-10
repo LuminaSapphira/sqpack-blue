@@ -84,15 +84,35 @@ mod basic {
     }
 
     #[test]
-    fn test_export_raw_data() {
+    fn test_export_raw_data_1() {
         let path = std::env::var("sqpack").unwrap();
 
         let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
-        let v = ffxiv.get_raw_data(
+        let mut v = ffxiv.get_raw_data(
             &ExFileIdentifier::new(
                 &String::from("music/ffxiv/bgm_system_title.scd")).unwrap()).unwrap();
 
+        let mut fi = File::create("exd/bgm_system_title.scd").unwrap();
+        use std::io::Write;
+        fi.write_all(&mut v.0);
         let expected: [u8;16] = [0x43, 0x51, 0x52, 0x41, 0xA8, 0xE7, 0x8E, 0xCC, 0xD5, 0xE1, 0xB3, 0x3A, 0xBE, 0x89, 0xDB, 0xCC];
+        let digest:[u8;16] = md5::compute(&v.0).into();
+        assert_eq!(expected, digest);
+    }
+
+    #[test]
+    fn test_export_raw_data_2() {
+        let path = std::env::var("sqpack").unwrap();
+
+        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+        let mut v = ffxiv.get_raw_data(
+            &ExFileIdentifier::new(
+                &String::from("music/ffxiv/BGM_PvP_Mogi_01.scd")).unwrap()).unwrap();
+
+        let mut fi = File::create("exd/bgm_pvp_mogi_01.scd").unwrap();
+        use std::io::Write;
+        fi.write_all(&mut v.0);
+        let expected: [u8;16] = [0x0D, 0xCC, 0x9B, 0xE6, 0xDE, 0xE5, 0xAE, 0x4B, 0x8F, 0xF3, 0x96, 0xA1, 0xA0, 0xA5, 0x70, 0xBE];
         let digest:[u8;16] = md5::compute(&v.0).into();
         assert_eq!(expected, digest);
     }
