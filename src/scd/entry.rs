@@ -43,7 +43,7 @@ pub struct SCDEntryNone {
 }
 
 impl SCDEntry for SCDEntryNone {
-    fn create(buffer: &[u8], header: SCDEntryHeader, chunks_offset: &u32, data_offset: &u32, little_end: &bool) -> Result<Box<Self>, FFXIVError> {
+    fn create(_buffer: &[u8], _header: SCDEntryHeader, _chunks_offset: &u32, _data_offset: &u32, _little_end: &bool) -> Result<Box<Self>, FFXIVError> {
         Ok(Box::new(SCDEntryNone{
 
             header: SCDEntryHeader {

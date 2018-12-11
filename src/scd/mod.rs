@@ -5,8 +5,8 @@ mod entry_msadpcm;
 mod decoding;
 
 use self::entry::*;
-use self::entry_ogg::SCDEntryOgg;
-use self::entry_msadpcm::SCDEntryMSADPCM;
+//use self::entry_ogg::SCDEntryOgg;
+//use self::entry_msadpcm::SCDEntryMSADPCM;
 use self::decoding::*;
 
 use ::FFXIVError;
@@ -14,7 +14,6 @@ use ::FFXIVError;
 pub struct SCDFile {
     pub entries: Vec<Box<SCDEntry>>,
     pub header: SCDHeader,
-    little_endian: bool,
 }
 
 pub struct SCDHeader {
@@ -36,7 +35,7 @@ impl SCDFile {
         let entries = decode_scd_entries(&data, &header, &little_endian)?;
 
 
-        Ok(SCDFile{entries, header, little_endian})
+        Ok(SCDFile{entries, header})
     }
 }
 
@@ -48,7 +47,8 @@ mod scd_tests {
     #[test]
     fn scd_ogg_export() {
 //        4016BA963FDC4EE8D73A69656029F1F7
-        use std::io::{Read, Write};
+        use std::io::Read;
+        //use std::io::Write;
         use std::fs::File;
         let path: String = std::env::var("test_files_path").unwrap();
         let mut scd = path.clone();
@@ -56,10 +56,6 @@ mod scd_tests {
         let mut file = File::open(&scd).unwrap();
         let mut data = Vec::<u8>::new();
         file.read_to_end(&mut data).unwrap();
-
-        let mut ogg = path.clone();
-        ogg.push_str("bgm_con_bahamut_bigboss1.ogg");
-        let mut ogg_file = File::create(&ogg).unwrap();
 
         let decoded = SCDFile::decode(data).unwrap();
 
@@ -74,7 +70,8 @@ mod scd_tests {
     #[test]
     fn scd_wav_export() {
         // 7E02DF98615F6296DC618515AB6C061E
-        use std::io::{Read, Write};
+        use std::io::Read;
+//        use std::io::Write;
         use std::fs::File;
         let path: String = std::env::var("test_files_path").unwrap();
         let mut scd = path.clone();
@@ -85,7 +82,7 @@ mod scd_tests {
 
         let mut ogg = path.clone();
         ogg.push_str("zingle_wedding_complete.wav");
-        let mut ogg_file = File::create(&ogg).unwrap();
+//        let mut ogg_file = File::create(&ogg).unwrap();
 
         let decoded = SCDFile::decode(data).unwrap();
 

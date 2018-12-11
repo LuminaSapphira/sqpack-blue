@@ -55,8 +55,13 @@ mod basic {
         let path = std::env::var("sqpack").unwrap();
         let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
         let exfile = ffxiv.get_exfile(&String::from("music/ffxiv/bgm_system_title.scd")).unwrap();
-        assert_eq!(exfile.get_index_file(ffxiv.path.as_path()).as_os_str(),
-            "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0c0000.win32.index"
+        assert!(
+            exfile.get_index_file(
+                ffxiv.path.as_path()).as_os_str().eq(
+                (path + "\\ffxiv\\0c0000.win32.index").as_str()
+            )
+//                ,
+//            "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0c0000.win32.index"
         );
     }
 
@@ -77,9 +82,8 @@ mod basic {
         let phash = exfile.get_sqpack_hashcode();
         let ifl = index_file.get_file(phash.folder_hash, phash.file_hash).unwrap();
         let base_dat_path= exfile.get_dat_file(ffxiv.path.as_path(), ifl.dat_file);
-        assert_eq!(
-            "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0c0000.win32.dat0",
-            base_dat_path.as_os_str()
+        assert!(
+            base_dat_path.as_os_str().eq((path + "\\ffxiv\\0c0000.win32.dat0").as_str())
         );
     }
 
@@ -88,13 +92,13 @@ mod basic {
         let path = std::env::var("sqpack").unwrap();
 
         let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
-        let mut v = ffxiv.get_raw_data(
+        let v = ffxiv.get_raw_data(
             &ExFileIdentifier::new(
                 &String::from("music/ffxiv/bgm_system_title.scd")).unwrap()).unwrap();
 
-        let mut fi = File::create("exd/bgm_system_title.scd").unwrap();
-        use std::io::Write;
-        fi.write_all(&mut v.0);
+//        let mut fi = File::create("exd/bgm_system_title.scd").unwrap();
+//        use std::io::Write;
+//        fi.write_all(&mut v.0);
         let expected: [u8;16] = [0x43, 0x51, 0x52, 0x41, 0xA8, 0xE7, 0x8E, 0xCC, 0xD5, 0xE1, 0xB3, 0x3A, 0xBE, 0x89, 0xDB, 0xCC];
         let digest:[u8;16] = md5::compute(&v.0).into();
         assert_eq!(expected, digest);
@@ -105,13 +109,13 @@ mod basic {
         let path = std::env::var("sqpack").unwrap();
 
         let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
-        let mut v = ffxiv.get_raw_data(
+        let v = ffxiv.get_raw_data(
             &ExFileIdentifier::new(
                 &String::from("music/ffxiv/BGM_PvP_Mogi_01.scd")).unwrap()).unwrap();
 
-        let mut fi = File::create("exd/bgm_pvp_mogi_01.scd").unwrap();
-        use std::io::Write;
-        fi.write_all(&mut v.0);
+//        let mut fi = File::create("exd/bgm_pvp_mogi_01.scd").unwrap();
+//        use std::io::Write;
+//        fi.write_all(&mut v.0).unwrap();
         let expected: [u8;16] = [0x0D, 0xCC, 0x9B, 0xE6, 0xDE, 0xE5, 0xAE, 0x4B, 0x8F, 0xF3, 0x96, 0xA1, 0xA0, 0xA5, 0x70, 0xBE];
         let digest:[u8;16] = md5::compute(&v.0).into();
         assert_eq!(expected, digest);
@@ -123,7 +127,7 @@ mod basic {
 
         let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
 
-        let s = ffxiv.get_sheet_index().unwrap();
+        ffxiv.get_sheet_index().unwrap();
     }
 
     #[test]
@@ -150,7 +154,7 @@ mod basic {
                             ::sheet::ex::SheetLanguage::None, &s);
 
         match sheet_result {
-            Ok(v) => panic!("Should not be possible to load without language"),
+            Ok(_) => panic!("Should not be possible to load without language!"),
             _ => (),
         };
 
@@ -196,51 +200,51 @@ mod basic {
 
         let mut bgm = File::create(out).unwrap();
         use std::io::Write;
-        write!(bgm, "\"index\",");
+        write!(bgm, "\"index\",").unwrap();
         sheet.types.iter().enumerate().for_each(|(index, typ)| {
             if index == sheet.types.len() - 1 {
-                write!(bgm, "\"{}\"", typ.get_header());
+                write!(bgm, "\"{}\"", typ.get_header())
             } else {
-                write!(bgm, "\"{}\",", typ.get_header());
-            }
+                write!(bgm, "\"{}\",", typ.get_header())
+            }.unwrap();
         });
-        writeln!(bgm, "");
+        writeln!(bgm, "").unwrap();
         sheet.rows.iter().enumerate().for_each(|(index, row)| {
-            write!(bgm, "\"{}\",", index);
+            write!(bgm, "\"{}\",", index).unwrap();
             row.types.iter().enumerate().for_each(|(index_typ, typ)| {
                 use ::sheet::ex::SheetDataType;
                 use ::sheet::BitFlags;
                 match typ {
-                    SheetDataType::String(s_info) =>
+                    SheetDataType::String(_s_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<String>(index_typ).unwrap()),
-                    SheetDataType::Bool(info) =>
+                    SheetDataType::Bool(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<bool>(index_typ).unwrap()),
-                    SheetDataType::Byte(info) =>
+                    SheetDataType::Byte(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<i8>(index_typ).unwrap()),
-                    SheetDataType::UByte(info) =>
+                    SheetDataType::UByte(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<u8>(index_typ).unwrap()),
-                    SheetDataType::Short(info) =>
+                    SheetDataType::Short(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<i16>(index_typ).unwrap()),
-                    SheetDataType::UShort(info) =>
+                    SheetDataType::UShort(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<u16>(index_typ).unwrap()),
-                    SheetDataType::Int(info) =>
+                    SheetDataType::Int(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<i32>(index_typ).unwrap()),
-                    SheetDataType::UInt(info) =>
+                    SheetDataType::UInt(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<u32>(index_typ).unwrap()),
-                    SheetDataType::Float(info) =>
+                    SheetDataType::Float(_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data::<f32>(index_typ).unwrap()),
-                    SheetDataType::PackedInts(info) =>
+                    SheetDataType::PackedInts(_info) =>
                         write!(bgm, "\"unsupported\""),
                     SheetDataType::BitFlags(b_info) =>
                         write!(bgm, "\"{}\"", row.read_cell_data
                             ::<BitFlags>(index_typ).unwrap().get_bool(b_info.bit.clone())),
 
-                };
+                }.unwrap();
                 if index_typ != row.types.len() - 1 {
-                    write!(bgm, ",");
+                    write!(bgm, ",").unwrap();
                 }
             });
-            writeln!(bgm, "");
+            writeln!(bgm, "").unwrap();
         });
 
     }
@@ -297,7 +301,7 @@ mod expack_test {
 
         let a = pbuff.as_os_str();
         println!("{:?}", a);
-        assert_eq!(a, "C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ex2\\0c0200.win32.index");
+        assert!(a.eq(( path.clone() + "\\ex2\\0c0200.win32.index").as_str()));
 
     }
 }

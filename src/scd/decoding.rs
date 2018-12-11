@@ -55,14 +55,13 @@ pub fn decode_scd_entries(buffer: &[u8], scd_header: &SCDHeader, little_end: &bo
         scd_entry_headers.push(decode_entry_header(&(header_offset as usize), buffer, little_end)?);
         entry_chunk_offsets.push(header_offset as u32 + 32);
         entry_data_offsets.push(entry_chunk_offsets[i].clone());
-        for j in 0..scd_entry_headers[i].aux_chunk_count {
+        for _ in 0..scd_entry_headers[i].aux_chunk_count {
             entry_data_offsets[i] = entry_data_offsets[i] +
                 read_i32(&(entry_data_offsets[i] as usize + 4), buffer, little_end)? as u32;
         };
     };
 
     let mut entries = Vec::<Box<SCDEntry>>::with_capacity(scd_header.entry_count as usize);
-    println!("{:?}", scd_entry_headers);
     for i in 0..scd_header.entry_count as usize {
         let pop = match scd_entry_headers.pop() {
             Some(val) => val,
@@ -103,7 +102,6 @@ fn decode_entry(buffer: &[u8], entry_header: SCDEntryHeader, entry_chunk_offset:
             SCDCodec::OGG => Ok(SCDEntryOgg::create(buffer, entry_header, entry_chunk_offset, entry_data_offset, little_end)?),
             SCDCodec::MSADPCM => Ok(SCDEntryMSADPCM::create(buffer, entry_header, entry_chunk_offset, entry_data_offset, little_end)?),
             SCDCodec::None => Ok(SCDEntryNone::create(buffer, entry_header, entry_chunk_offset, entry_data_offset, little_end)?),
-            _ => Err(FFXIVError::DecodingSCD(Box::new(FFXIVError::Custom(format!("Unknown codec!")))))
         }
     }
 }
@@ -135,14 +133,5 @@ pub fn read_i32(offset: &usize, buffer: &[u8], little_end: &bool) -> Result<i32,
         Ok(LittleEndian::read_i32(&buffer[*offset..*offset + 4]))
     } else {
         Ok(BigEndian::read_i32(&buffer[*offset..*offset + 4]))
-    }
-}
-
-pub fn read_i64(offset: &usize, buffer: &[u8], little_end: &bool) -> Result<i64, FFXIVError> {
-    check_len(offset, buffer, 8)?;
-    if *little_end {
-        Ok(LittleEndian::read_i64(&buffer[*offset..*offset + 8]))
-    } else {
-        Ok(BigEndian::read_i64(&buffer[*offset..*offset + 8]))
     }
 }

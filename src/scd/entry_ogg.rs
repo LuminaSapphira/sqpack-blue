@@ -1,6 +1,6 @@
 use super::SCDEntry;
 use super::SCDEntryHeader;
-use super::decoding::{read_i16, read_i32, read_i64};
+use super::decoding::{read_i16, read_i32};
 use ::FFXIVError;
 
 use std::io::Write;
@@ -38,7 +38,7 @@ const VORBIS_HEADER_SIZE_OFFSET: usize = 0x14;
 
 impl SCDEntry for SCDEntryOgg {
 
-    fn create(buffer: &[u8], header: SCDEntryHeader, chunks_offset: &u32, data_offset: &u32, little_end: &bool) -> Result<Box<SCDEntryOgg>, FFXIVError> {
+    fn create(buffer: &[u8], header: SCDEntryHeader, _chunks_offset: &u32, data_offset: &u32, little_end: &bool) -> Result<Box<SCDEntryOgg>, FFXIVError> {
 
         let crypt_type = SCDOggCryptType::from(read_i16(&(*data_offset as usize + CRYPT_TYPE_OFFSET), buffer, little_end)?)?;
         let seek_table_size  = read_i32(&(*data_offset as usize + SEEK_TABLE_SIZE_OFFSET), buffer, little_end)?;

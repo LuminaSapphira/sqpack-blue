@@ -17,9 +17,9 @@ impl BitFlags {
 impl std::fmt::Display for BitFlags {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for i in 0..8 as u8 {
-            write!(f, "{}", if self.get_bool(i) { 1 } else { 0 });
+            write!(f, "{}", if self.get_bool(i) { 1 } else { 0 })?
         }
-        write!(f, "")
+        Ok(())
     }
 }
 

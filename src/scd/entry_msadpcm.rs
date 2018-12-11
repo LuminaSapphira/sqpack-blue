@@ -16,7 +16,7 @@ const DATA_MAGIC: &'static str = "data";
 
 impl SCDEntry for SCDEntryMSADPCM {
 
-    fn create(buffer: &[u8], header: SCDEntryHeader, chunks_offset: &u32, data_offset: &u32, little_end: &bool) -> Result<Box<SCDEntryMSADPCM>, FFXIVError> {
+    fn create(buffer: &[u8], header: SCDEntryHeader, chunks_offset: &u32, data_offset: &u32, _little_end: &bool) -> Result<Box<SCDEntryMSADPCM>, FFXIVError> {
         let final_data_offset = *chunks_offset + header.samples_offset as u32;
 
         let mut decoded = Vec::<u8>::with_capacity(0x1c + WAVE_HEADER_SIZE + header.data_size as usize);
