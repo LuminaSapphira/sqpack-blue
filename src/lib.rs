@@ -37,7 +37,21 @@ pub enum FFXIVError {
     UnknownExpansion(String),
     CorruptFileName(String),
     InvalidLanguage(sheet::ex::SheetLanguage, std::collections::HashSet<sheet::ex::SheetLanguage>),
-    Custom(String)
+    Custom(String),
+    IO(std::io::Error),
+    SheetError(sheet::SheetError)
+}
+
+impl From<std::io::Error> for FFXIVError {
+    fn from(err: std::io::Error) -> FFXIVError {
+        FFXIVError::IO(err)
+    }
+}
+
+impl From<sheet::SheetError> for FFXIVError {
+    fn from(err: sheet::SheetError) -> FFXIVError {
+        FFXIVError::SheetError(err)
+    }
 }
 
 impl std::fmt::Display for FFXIVError {
@@ -55,6 +69,8 @@ impl std::fmt::Display for FFXIVError {
             CorruptFileName(file) => write!(f, "Parsing of the file name failed. Requested file: \"{}\"", file),
             InvalidLanguage(req, acc) => write!(f, "The requested language was invalid! Requested: {:?}. Acceptable: {:?}", req, acc),
             Custom(s) => write!(f, "{}", s),
+            IO(e) => write!(f, "A problem occurred while writing: {:?}", e),
+            SheetError(e) => write!(f, "An error occurred while reading the Sheet: {:?}", e),
         }
     }
 }

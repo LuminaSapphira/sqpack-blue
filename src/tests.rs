@@ -196,58 +196,74 @@ mod basic {
 
         let s = ffxiv.get_sheet_index().unwrap();
         let sheet = ffxiv.get_sheet(&String::from("bgm"),
-                        ::sheet::ex::SheetLanguage::None, &s).unwrap();
+                                    ::sheet::ex::SheetLanguage::None, &s).unwrap();
 
         let mut bgm = File::create(out).unwrap();
-        use std::io::Write;
-        write!(bgm, "\"index\",").unwrap();
-        sheet.types.iter().enumerate().for_each(|(index, typ)| {
-            if index == sheet.types.len() - 1 {
-                write!(bgm, "\"{}\"", typ.get_header())
-            } else {
-                write!(bgm, "\"{}\",", typ.get_header())
-            }.unwrap();
-        });
-        writeln!(bgm, "").unwrap();
-        sheet.rows.iter().enumerate().for_each(|(index, row)| {
-            write!(bgm, "\"{}\",", index).unwrap();
-            row.types.iter().enumerate().for_each(|(index_typ, typ)| {
-                use ::sheet::ex::SheetDataType;
-                use ::sheet::BitFlags;
-                match typ {
-                    SheetDataType::String(_s_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<String>(index_typ).unwrap()),
-                    SheetDataType::Bool(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<bool>(index_typ).unwrap()),
-                    SheetDataType::Byte(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<i8>(index_typ).unwrap()),
-                    SheetDataType::UByte(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<u8>(index_typ).unwrap()),
-                    SheetDataType::Short(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<i16>(index_typ).unwrap()),
-                    SheetDataType::UShort(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<u16>(index_typ).unwrap()),
-                    SheetDataType::Int(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<i32>(index_typ).unwrap()),
-                    SheetDataType::UInt(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<u32>(index_typ).unwrap()),
-                    SheetDataType::Float(_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data::<f32>(index_typ).unwrap()),
-                    SheetDataType::PackedInts(_info) =>
-                        write!(bgm, "\"unsupported\""),
-                    SheetDataType::BitFlags(b_info) =>
-                        write!(bgm, "\"{}\"", row.read_cell_data
-                            ::<BitFlags>(index_typ).unwrap().get_bool(b_info.bit.clone())),
-
-                }.unwrap();
-                if index_typ != row.types.len() - 1 {
-                    write!(bgm, ",").unwrap();
-                }
-            });
-            writeln!(bgm, "").unwrap();
-        });
+        sheet::write_csv(&sheet,&mut bgm).unwrap();
 
     }
+
+//    #[test]
+//    fn csv_ify() {
+//        let path = std::env::var("sqpack").unwrap();
+//        let out = std::env::var("out").unwrap();
+//
+//        let ffxiv = FFXIV::new(Path::new(&path)).unwrap();
+//
+//        let s = ffxiv.get_sheet_index().unwrap();
+//        let sheet = ffxiv.get_sheet(&String::from("bgm"),
+//                        ::sheet::ex::SheetLanguage::None, &s).unwrap();
+//
+//        let mut bgm = File::create(out).unwrap();
+//        use std::io::Write;
+//        write!(bgm, "\"index\",").unwrap();
+//        sheet.types.iter().enumerate().for_each(|(index, typ)| {
+//            if index == sheet.types.len() - 1 {
+//                write!(bgm, "\"{}\"", typ.get_header())
+//            } else {
+//                write!(bgm, "\"{}\",", typ.get_header())
+//            }.unwrap();
+//        });
+//        writeln!(bgm, "").unwrap();
+//        sheet.rows.iter().enumerate().for_each(|(index, row)| {
+//            write!(bgm, "\"{}\",", index).unwrap();
+//            row.types.iter().enumerate().for_each(|(index_typ, typ)| {
+//                use ::sheet::ex::SheetDataType;
+//                use ::sheet::BitFlags;
+//                match typ {
+//                    SheetDataType::String(_s_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<String>(index_typ).unwrap()),
+//                    SheetDataType::Bool(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<bool>(index_typ).unwrap()),
+//                    SheetDataType::Byte(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<i8>(index_typ).unwrap()),
+//                    SheetDataType::UByte(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<u8>(index_typ).unwrap()),
+//                    SheetDataType::Short(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<i16>(index_typ).unwrap()),
+//                    SheetDataType::UShort(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<u16>(index_typ).unwrap()),
+//                    SheetDataType::Int(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<i32>(index_typ).unwrap()),
+//                    SheetDataType::UInt(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<u32>(index_typ).unwrap()),
+//                    SheetDataType::Float(_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data::<f32>(index_typ).unwrap()),
+//                    SheetDataType::PackedInts(_info) =>
+//                        write!(bgm, "\"unsupported\""),
+//                    SheetDataType::BitFlags(b_info) =>
+//                        write!(bgm, "\"{}\"", row.read_cell_data
+//                            ::<BitFlags>(index_typ).unwrap().get_bool(b_info.bit.clone())),
+//
+//                }.unwrap();
+//                if index_typ != row.types.len() - 1 {
+//                    write!(bgm, ",").unwrap();
+//                }
+//            });
+//            writeln!(bgm, "").unwrap();
+//        });
+//
+//    }
 
     #[test]
     fn check_bit_algo() {
