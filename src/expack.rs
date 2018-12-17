@@ -4,6 +4,7 @@ use std::path::{Path,PathBuf};
 use ::hash::PathHash;
 use ::hash;
 
+#[derive(Copy, Clone)]
 pub enum FileType {
     Common,
     BGCommon,
@@ -92,6 +93,7 @@ impl FileType {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum GameExpansion {
     FFXIV,
     EX1,
@@ -158,6 +160,7 @@ fn parse_number(expath_str: &String) -> Result<u8, FFXIVError> {
     }
 }
 
+#[derive(Clone)]
 pub struct ExFileIdentifier {
 
     file_type: FileType,
