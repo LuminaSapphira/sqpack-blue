@@ -1,6 +1,6 @@
 [package]
 name = "sqpack_blue"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["CerulanLumina <CerulanLumina@users.noreply.github.com>"]
 
 [features]

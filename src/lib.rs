@@ -12,6 +12,8 @@ mod scd;
 
 pub use expack::{GameExpansion, FileType, ExFileIdentifier};
 
+pub use index::Index;
+
 mod tests;
 
 //pub use sheet::Sheet;
@@ -21,6 +23,7 @@ use std::fs::File;
 use std::path::{Path,PathBuf};
 use std::error::Error;
 
+#[derive(Clone)]
 pub struct FFXIV {
     path: PathBuf,
 }
