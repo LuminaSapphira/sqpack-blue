@@ -187,6 +187,10 @@ impl ExFileIdentifier {
         Ok(ExFileIdentifier{file_type, expansion, number, exfile: expath_str.clone()})
     }
 
+    pub fn get_exfile_string(&self) -> &String {
+        &self.exfile
+    }
+
     pub fn get_sqpack_hashcode(&self) -> PathHash {
         hash::compute_path(&self.exfile)
     }
