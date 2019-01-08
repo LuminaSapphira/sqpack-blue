@@ -24,7 +24,7 @@ mod basic {
         let i = io::read_index_file(&mut file).unwrap();
         let exd = i.get_file(0xE39B7999, 0xa41d4329)
             .expect("couldn't unwrap file in lib.rs");
-        assert_eq!(exd.data_offset, 104770944);
+        assert_eq!(exd.data_offset, 124459392);
     }
 
     #[test]
@@ -162,7 +162,7 @@ mod basic {
             ffxiv.get_sheet(&String::from("achievement"),
                             ::sheet::ex::SheetLanguage::English, &s);
         let sheet = sheet_result_2.unwrap();
-        let row: String = sheet.rows.get(28).unwrap().read_cell_data(1).unwrap();
+        let row: String = sheet.rows.get(&28).unwrap().read_cell_data(1).unwrap();
         assert_eq!(row, "The Sweet Science V")
     }
 
@@ -175,7 +175,8 @@ mod basic {
         let s = ffxiv.get_sheet_index().unwrap();
         let sheet = ffxiv.get_sheet(&String::from("item"),
                         ::sheet::ex::SheetLanguage::English, &s).unwrap();
-        let omg: String = sheet.rows[23991].read_cell_data(0).unwrap();
+
+        let omg: String = sheet.rows[&23991].read_cell_data(0).unwrap();
         assert_eq!(omg, "OMG");
     }
 

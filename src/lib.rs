@@ -1,5 +1,6 @@
 extern crate byteorder;
 extern crate flate2;
+extern crate indexmap;
 
 mod index;
 mod io;

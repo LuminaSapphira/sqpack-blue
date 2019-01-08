@@ -11,9 +11,11 @@ use self::ex::SheetDataType;
 use std::rc::Rc;
 use std::io::Write;
 
+use indexmap::IndexMap;
+
 
 pub struct Sheet {
-    pub rows: Vec<SheetRow>,
+    pub rows: IndexMap<usize, SheetRow>,
     pub types: Rc<Vec<SheetDataType>>,
     pub column_count: u32
 }
@@ -72,8 +74,8 @@ pub fn write_csv(sheet: &Sheet, buffer: &mut Write) -> Result<(), ::FFXIVError> 
             write!(buffer, "\"{}\",", typ.get_header())
         }?;
     }
-    writeln!(buffer, "")?;
-    for (index, row) in sheet.rows.iter().enumerate() {
+    writeln!(buffer, "")?;;
+    for (index, row) in sheet.rows.iter() {
         write!(buffer, "\"{}\",", index)?;
         for (index_typ, typ) in row.types.iter().enumerate() {
             use ::sheet::ex::SheetDataType;

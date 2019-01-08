@@ -1,6 +1,6 @@
 [package]
 name = "sqpack_blue"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["CerulanLumina <CerulanLumina@users.noreply.github.com>"]
 
 [features]
@@ -13,6 +13,7 @@ doctest = false
 [dependencies]
 byteorder = "1.2.7"
 flate2 = "1.0.4"
+indexmap = "1.0.2"
 
 [dev-dependencies]
 md5 = "0.6.0"
