@@ -86,7 +86,7 @@ pub fn read_block_table(file: &mut File, index_file: &index::File, info: &DataIn
 }
 
 const BLOCK_MAGIC: u32 = 0x10;
-//const BLOCK_PADDING: u32 = 0x80;
+const BLOCK_PADDING: u32 = 0x80;
 
 pub fn read_compressed_block(file: &mut File, offset: u32, block_size: u16) -> Result<(Vec<u8>, bool), ::FFXIVError> {
     let current_pos = file.seek(SeekFrom::Current(0)).map_err(|o| ::FFXIVError::ReadingDat(Box::<Error>::from(o)))?;
@@ -97,19 +97,20 @@ pub fn read_compressed_block(file: &mut File, offset: u32, block_size: u16) -> R
     }
     file.read_u32::<LittleEndian>().map_err(|o| ::FFXIVError::ReadingDat(Box::<Error>::from(o)))?;
     let compressed_length = file.read_u32::<LittleEndian>().map_err(|o| ::FFXIVError::ReadingDat(Box::<Error>::from(o)))?;
-    let _decompressed_length = file.read_u32::<LittleEndian>().map_err(|o| ::FFXIVError::ReadingDat(Box::<Error>::from(o)))?;
+    let decompressed_length = file.read_u32::<LittleEndian>().map_err(|o| ::FFXIVError::ReadingDat(Box::<Error>::from(o)))?;
     let is_compressed = compressed_length < 32000;
 
 
 
-    let final_length = block_size as u32 - BLOCK_MAGIC;
-//        if is_compressed {
-//            if (block_size as u32 + BLOCK_MAGIC) % BLOCK_PADDING != 0 {
-//                compressed_length + BLOCK_PADDING - ((block_size as u32 - BLOCK_MAGIC) % BLOCK_PADDING)
-//            }
-//            else { compressed_length }
-//        }
-//        else {decompressed_length};
+    let final_length =
+//        block_size as u32 - BLOCK_MAGIC;
+        if is_compressed {
+            if (block_size as u32 + BLOCK_MAGIC) % BLOCK_PADDING != 0 {
+                compressed_length + BLOCK_PADDING - ((block_size as u32 - BLOCK_MAGIC) % BLOCK_PADDING)
+            }
+            else { compressed_length }
+        }
+        else {decompressed_length};
 
 
     let mut data = Vec::<u8>::with_capacity(final_length as usize);
@@ -157,7 +158,9 @@ pub fn read_and_decompress(file: &mut File, info: &DataInfo,
 
     };
 
-    assert_eq!(total_size, info.uncompressed_size);
+    if total_size != info.uncompressed_size {
+        return Err(::FFXIVError::ReadingDat(Box::new(::FFXIVError::Custom(format!("Total size was not equal to the uncompressed size!!! This is a fatal error!")))));
+    }
 
     file.seek(SeekFrom::Start(current_pos)).map_err(|o| ::FFXIVError::ReadingDat(Box::<Error>::from(o)))?;
 

@@ -5,6 +5,7 @@ target/**/.*
 **/Cargo.lock
 **/*.exd
 **/*.exh
+exd/*
 **/*.zlib
 .idea/**/*
 *.iml

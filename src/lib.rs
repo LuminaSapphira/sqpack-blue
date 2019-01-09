@@ -1,14 +1,19 @@
 extern crate byteorder;
 extern crate flate2;
+extern crate indexmap;
 
 mod index;
 mod io;
-//mod sheet;
 
-#[allow(dead_code)]
 pub mod hash;
-mod ex;
+mod expack;
+pub mod sheet;
 
+mod scd;
+
+pub use expack::{GameExpansion, FileType, ExFileIdentifier};
+
+pub use index::Index;
 
 mod tests;
 
@@ -17,52 +22,11 @@ mod tests;
 
 use std::fs::File;
 use std::path::{Path,PathBuf};
+use std::error::Error;
 
-//use byteorder::WriteBytesExt;
-
-//pub fn get_data_offset(file: &mut File) -> u32 {
-//
-////    let i = io::read_index_file(file);
-////    let exd = i.get_file(0xE39B7999, 0xa41d4329)
-////        .expect("couldn't unwrap file in lib.rs");
-////
-////    let exh = i.get_file(0xE39B7999, 0xa0973a01)
-////        .expect("couldn't unwrap file in lib.rs");
-////
-////    let mut dat_file =
-////        File::open("C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack\\ffxiv\\0a0000.win32.dat0").expect("not found");
-////
-////
-////    let m = io::read_data_file(&mut dat_file, exd);
-////    let mut out_file = File::create("bgm_0.exd").unwrap();
-////    for by in m {
-////        out_file.write_u8(by).unwrap();
-////    }
-////    let m2 = io::read_data_file(&mut dat_file, exh);
-////    let mut out_file2 = File::create("bgm.exh").unwrap();
-////    for by2 in m2 {
-////        out_file2.write_u8(by2).unwrap();
-////    }
-//
-//    3
-//}
-
-#[allow(dead_code)]
-enum GameExpansion {
-    FFXIV,
-    EX1,
-    EX2
-}
-
-pub struct ExPath {
-    file_type: u8,
-    expansion: GameExpansion,
-
-}
-
-#[allow(dead_code)]
+#[derive(Clone)]
 pub struct FFXIV {
-    path: PathBuf
+    path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -73,6 +37,25 @@ pub enum FFXIVError {
     DecodingEXD(Box<std::error::Error>),
     DecodingSCD(Box<std::error::Error>),
     MagicMissing,
+    UnknownFileType(String),
+    UnknownExpansion(String),
+    CorruptFileName(String),
+    InvalidLanguage(sheet::ex::SheetLanguage, std::collections::HashSet<sheet::ex::SheetLanguage>),
+    Custom(String),
+    IO(std::io::Error),
+    SheetError(sheet::SheetError)
+}
+
+impl From<std::io::Error> for FFXIVError {
+    fn from(err: std::io::Error) -> FFXIVError {
+        FFXIVError::IO(err)
+    }
+}
+
+impl From<sheet::SheetError> for FFXIVError {
+    fn from(err: sheet::SheetError) -> FFXIVError {
+        FFXIVError::SheetError(err)
+    }
 }
 
 impl std::fmt::Display for FFXIVError {
@@ -85,6 +68,13 @@ impl std::fmt::Display for FFXIVError {
             DecodingEXD(e) => write!(f, "An error occurred while parsing the EXD file. Inner error: {:?}", e),
             DecodingSCD(e) => write!(f, "An error occurred while parsing the SCD file. Inner error: {:?}", e),
             MagicMissing => write!(f, "The magic marker in a Square Enix file was missing."),
+            UnknownFileType(file) => write!(f, "The type of the file was not understood. Requested file: \"{}\"", file),
+            UnknownExpansion(file) => write!(f, "The expansion of the file was not understood. Requested file: \"{}\"", file),
+            CorruptFileName(file) => write!(f, "Parsing of the file name failed. Requested file: \"{}\"", file),
+            InvalidLanguage(req, acc) => write!(f, "The requested language was invalid! Requested: {:?}. Acceptable: {:?}", req, acc),
+            Custom(s) => write!(f, "{}", s),
+            IO(e) => write!(f, "A problem occurred while writing: {:?}", e),
+            SheetError(e) => write!(f, "An error occurred while reading the Sheet: {:?}", e),
         }
     }
 }
@@ -92,30 +82,98 @@ impl std::fmt::Display for FFXIVError {
 impl std::error::Error for FFXIVError {}
 
 impl FFXIV {
+    /// Create a new instance of FFXIV to manage access to the data files.
+    /// Takes a path to the *sqpack directory*.
     pub fn new(path: &Path) -> Option<FFXIV> {
         if path.exists() {
-            Some(FFXIV {path: path.to_path_buf()})
-        }
-        else {
+            Some(FFXIV { path: path.to_path_buf() })
+        } else {
             None
         }
     }
 
-    pub fn get_raw_data(&self, path: &ExPath) -> Result<Vec<u8>, FFXIVError> {
-        /*
-        let mut i_file: File = File::open(path.get_index_file());
-
-        let index: Index = io::read_index_file(&mut i_file);
-        let dat_loc =
-        let mut d_file: File = File::open(path.get_dat_file(dat_loc));
-        */
-        Err(FFXIVError::FileNotFound)
+    /// Gets a managed file identifier that describes a file within the dat files
+    pub fn get_exfile(&self, expath: &String) -> Result<ExFileIdentifier, FFXIVError> {
+        ExFileIdentifier::new(expath)
     }
 
-//    pub fn get_sheet(&self, path: &ExPath) -> Result<sheet::Sheet, FFXIVError> {
-//        unimplemented!()
-//    }
-//
+    /// Creates an Index structure from the files on disk that can be later used to
+    /// access files.
+    pub fn get_index(&self, exfile: &ExFileIdentifier) -> Result<index::Index, FFXIVError> {
+        let mut i_file = File::open(
+            exfile.get_index_file(self.path.as_path()))
+            .map_err(|o| FFXIVError::ReadingIndex(Box::<Error>::from(o)))?;
+        let ind = io::read_index_file(&mut i_file)?;
+        Ok(ind)
+    }
+
+    /// Gets the raw data of a file. Determines which index the file would be in,
+    /// and returns it as well as the data. get_raw_data_with_index is much faster
+    /// and should be preferred as the Index doesn't need to be rebuilt every call.
+    pub fn get_raw_data(&self, exfile: &ExFileIdentifier) -> Result<(Vec<u8>, index::Index), FFXIVError> {
+        let ind = self.get_index(exfile)?;
+        let data = self.get_raw_data_with_index(exfile, &ind)?;
+        Ok((data, ind))
+    }
+
+    /// Uses a provided index to locate a file in the data files and extract its raw data.
+    pub fn get_raw_data_with_index(&self, exfile: &ExFileIdentifier, provided_index: &index::Index) -> Result<Vec<u8>, FFXIVError> {
+
+
+        let phash = exfile.get_sqpack_hashcode();
+        match provided_index.get_file(phash.folder_hash, phash.file_hash) {
+            Some(index_file) => {
+                let base_dat_path= exfile.get_dat_file(self.path.as_path(), index_file.dat_file);
+                let mut dat_file = File::open(
+                    base_dat_path.as_path()
+                ).map_err(|o| FFXIVError::ReadingDat(Box::<Error>::from(o)))?;
+                io::read_data_file(&mut dat_file, &index_file)
+            },
+            _ => Err(FFXIVError::FileNotFound)
+        }
+
+    }
+
+    /// Gets the index used for sheets
+    pub fn get_sheet_index(&self) -> Result<index::SheetIndex, FFXIVError> {
+        let exl_id = self.get_exfile(&String::from("exd/root.exl"))?;
+        let index = self.get_index(&exl_id)?;
+        Ok(index::SheetIndex::new(index))
+    }
+
+
+    /// Extracts sheet data from the data files. Parses the data into a readable format.
+    /// Takes a parameter which is the name of the sheet (without any preceeding exd/
+    /// or .exh/exd file extension)
+    pub fn get_sheet(&self, exd: &String, language: sheet::ex::SheetLanguage, sheet_index: &index::SheetIndex) -> Result<sheet::Sheet, FFXIVError> {
+        use sheet::ex::SheetLanguage;
+        let exh_path = String::from(format!("exd/{}.exh", exd.as_str()));
+        let exfile = self.get_exfile(&exh_path)?;
+        let header = self.get_raw_data_with_index(&exfile, &sheet_index.index)?;
+        let info = sheet::decoding::decode_sheet_info(&header)?;
+        if !info.languages.contains(&language) { return Err(FFXIVError::InvalidLanguage(language, info.languages)); };
+        let mut all_page_data = Vec::<Vec<u8>>::new();
+        for page in &info.pages {
+            let exd_path = if language == SheetLanguage::None {
+                String::from(format!("exd/{}_{}.exd", exd.as_str(), page.page_entry))
+            } else {
+                String::from(format!("exd/{}_{}_{}.exd", exd.as_str(), page.page_entry, language.get_language_code().unwrap()))
+            };
+            let page_exfile = self.get_exfile(&exd_path)?;
+            let page_data = self.get_raw_data_with_index(&page_exfile, &sheet_index.index)?;
+            all_page_data.push(page_data);
+        }
+        match sheet::decoding::decode_sheet_from_bytes(&info, &all_page_data) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(e)
+        }
+
+    }
+
+    pub fn decode_sound(&self, data: Vec<u8>) -> Result<scd::SCDFile, FFXIVError> {
+        scd::SCDFile::decode(data)
+    }
+
 //    pub fn get_music(&self, path: &ExPath) -> Result<scd::SCDData, FFXIVError> {
 //        unimplemented!()
 //    }
@@ -134,78 +192,4 @@ impl FFXIV {
 
 
     */
-
 }
-
-//struct GameData {
-////    pub path: Path
-//}
-//
-//struct GamePath {
-//    pub folder_hash: u32,
-//    pub file_hash: u32,
-//    pub expansion: GameExpansion
-//}
-//
-//impl GameData {
-//    pub fn get_raw_data(&self, location: &GamePath) -> Vec<u8> {
-//        unimplemented!();
-//    }
-//    pub fn get_sheet(&self, exd_path: &String, exd_name: &String) -> Sheet {
-//        let mut exh_path = exd_path.clone();
-//        exh_path.insert_str(0, "exd/");
-//        let mut exh_name = exd_name.clone();
-//        exh_name.push_str(".exh");
-//        let gp = GamePath {
-//            folder_hash: hash::compute(&exh_path),
-//            file_hash: hash::compute(&exh_name),
-//            expansion: GameExpansion::FFXIV
-//        };
-//        unimplemented!();
-//    }
-//}
-//
-//impl GamePath {
-//    pub fn new(path: &String, file: &String) -> GamePath {
-//        unimplemented!();
-//    }
-//}
-//
-//pub fn prepare_game_data(path: &std::path::Path) -> GameData {
-//    GameData { path: path.clone() }
-//}
-
-/*
-
-
- impl GameExpansion {
-
- }
- struct GameData {
-   path: std::path::Path
- }
- impl GameData {
-   pub fn get_raw_data(&self, location: &GamePath, ) -> Vec<u8> {}
-
-   // exd path is after /exd/ that all share, exd name is without extension
-   // auto-resolves to "${exd_name}.exh" internally
-   pub fn get_sheet(&self, exd_path: &String, exd_name: &String) -> Sheet {}
- }
- struct GamePath {
-   folder_hash: u32,
-   file_hash: u32,
-   expansion: u8
- }
-
- pub fn prepare_game_data(path: std::path::Path) -> GameData {}
-
-
-
- pub fn get_path(path: &String, file: &String) -> GamePath {}
-
-
- pub fn get_sheet(exd_path: &String, exd_name: &String) -> Sheet {}
-
-
-
-*/
