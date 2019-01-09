@@ -74,7 +74,9 @@ fn decode_dataset_definition(exh_ds_table: &[u8], ds_size: &u16, num_types: &u16
 fn decode_data_type(exh_data_type: (u16, u16), ds_size: &u16) -> Result<SheetDataType, FFXIVError> {
 
     match exh_data_type.0 {
-        0x0 => Ok(SheetDataType::String(StringInfo{pointer: exh_data_type.1, strings_offset: ds_size.clone() as u32})),
+        0x0 => {
+            Ok(SheetDataType::String(StringInfo{pointer: exh_data_type.1, strings_offset: ds_size.clone() as u32}))
+        },
         0x1 => Ok(SheetDataType::Bool(BasicInfo{pointer: exh_data_type.1})),
         0x2 => Ok(SheetDataType::Byte(BasicInfo{pointer: exh_data_type.1})),
         0x3 => Ok(SheetDataType::UByte(BasicInfo{pointer: exh_data_type.1})),
@@ -127,12 +129,20 @@ fn decode_lang_table(exh_lang_table: &[u8], num_langs: &u16) -> Result<HashSet<S
     Ok(langs)
 }
 
+//fn test_print(hm: &indexmap::IndexMap<usize, u32>) {
+//    println!("{{\"array\": [");
+//    hm.iter().for_each(|(key, val)| {
+//        print!("{{\"key\": {}, \"val\": {}}},", key, val);
+//    });
+//    println!("]}}");
+//}
+
 /// Decodes a sheet from bytes given the header info and all pages of the data file.
 pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<Vec<u8>>) -> Result<Sheet, FFXIVError> {
 
     let types = Rc::new(exh.data_types.to_vec());
     let mut sheet = Sheet {
-        rows: Vec::<SheetRow>::with_capacity(exh.num_entries as usize),
+        rows: indexmap::IndexMap::new(),
         types: types.clone(),
         column_count: exh.data_types.len() as u32
     };
@@ -167,27 +177,55 @@ pub fn decode_sheet_from_bytes(exh: &SheetInfo, exd: &Vec<Vec<u8>>) -> Result<Sh
 
         let offset_start: usize = 0x20;
 
-        for i in 0..page.page_size as usize {
-            let r_ind_start = offset_start + 8 * i;
-            let r_ind_end = r_ind_start + 4;
-            let r_off_start = r_ind_end.clone();
-            let r_off_end = r_off_start + 4;
-            let row_index: u32 = BigEndian::read_u32(&pexd[r_ind_start .. r_ind_end]);
-            let row_offset: u32 = BigEndian::read_u32(&pexd[r_off_start .. r_off_end]);
-            if sheet.rows.len() != row_index as usize {
-                return Err(FFXIVError::DecodingEXD(Box::new(FFXIVError::Custom(format!("Unsequential rows in EXDF")))));
+        let mut exd_table= indexmap::IndexMap::<usize, u32>::with_capacity(page.page_size as usize);
+        {
+            let mut current_index: usize = 0;
+            let mut last_row: Option<usize> = None;
+            while last_row.map(|lr| lr < page.page_entry as usize + page.page_size as usize).unwrap_or(true) {
+                let r_ind_start = offset_start + 8 * current_index;
+                if r_ind_start >= offset_start + offset_size as usize {
+                    break;
+                }
+                let r_ind_end = r_ind_start + 4;
+                let r_off_start = r_ind_end.clone();
+                let r_off_end = r_off_start + 4;
+                let row_index: u32 = BigEndian::read_u32(&pexd[r_ind_start..r_ind_end]);
+                let row_offset: u32 = BigEndian::read_u32(&pexd[r_off_start..r_off_end]);
+
+                if exd_table.contains_key(&(row_index as usize)) {
+                    return Err(FFXIVError::DecodingEXD(Box::new(FFXIVError::Custom(format!("Duplicate rows in EXDF")))));
+                }
+
+                exd_table.insert(row_index as usize, row_offset);
+                last_row = Some(row_index as usize);
+                current_index += 1;
+            }
+        }
+
+        for (row_index, row_offset) in exd_table {
+            if sheet.rows.contains_key(&(row_index as usize)) {
+                return Err(FFXIVError::DecodingEXD(Box::new(FFXIVError::Custom(format!("Duplicate rows in EXDF")))));
             }
 
             let row_size: u32 = BigEndian::read_u32(&pexd[row_offset as usize .. row_offset as usize + 4]);
             let row_slicer = row_offset as usize + 6;
             let row_slicer_end = row_slicer + row_size as usize;
+            if row_slicer_end > pexd.len() {
+                return Err(FFXIVError::DecodingEXD(Box::new(FFXIVError::Custom(format!("Malformed Data")))));
+            }
             let row_slice: &[u8] = &pexd[row_slicer .. row_slicer_end];
 
-            sheet.rows.push(SheetRow {
+            sheet.rows.insert(row_index as usize, SheetRow {
                 types: types.clone(),
                 by: row_slice.to_vec()
             });
         }
+
+//        for i in 0..page.page_size as usize {
+//
+//
+//
+//        }
 
         page_index = page_index + 1;
     }
@@ -209,8 +247,8 @@ mod decode_test {
         file_exh.read_to_end(&mut exh).unwrap();
 
         let val = decode_sheet_info(&exh).unwrap();
-        assert_eq!(val.num_entries, 594);
-        assert_eq!(val.pages.get(0).unwrap().page_size, 594);
+        assert_eq!(val.num_entries, 636);
+        assert_eq!(val.pages.get(0).unwrap().page_size, 646);
 
         val.languages.get(&::sheet::ex::SheetLanguage::None).unwrap();
         match val.data_types.get(6).unwrap() {
@@ -235,7 +273,7 @@ mod decode_test {
 
         let val = decode_sheet_info(&exdv).unwrap();
         let m = decode_sheet_from_bytes(&val, &vec![v]).unwrap();
-        let sr: &SheetRow = m.rows.get(8).unwrap();
+        let sr: &SheetRow = m.rows.get(&8).unwrap();
         let title: String = sr.read_cell_data(0).unwrap();
         assert_eq!("music/ffxiv/BGM_Field_Gri_01.scd", title);
     }

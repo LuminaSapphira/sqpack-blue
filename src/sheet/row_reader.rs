@@ -64,7 +64,8 @@ impl FromSheet for String {
             Some(get_result) => match get_result {
                 SheetDataType::String(info) => {
                     let end: usize = info.pointer as usize + 4;
-                    let sptr = b.by[info.pointer as usize..end].iter().enumerate().fold(0, |acc, x| acc + (((*x.1) as u32) << ((x.0) as usize) * 8));
+                    let sptr = BigEndian::read_u32(&b.by[info.pointer as usize .. end]);
+//                    let sptr = b.by[info.pointer as usize..end].iter().enumerate().fold(0, |acc, x| acc + (((*x.1) as u32) << ((x.0) as usize) * 8));
                     let length_option = b.by[info.strings_offset as usize + sptr as usize..].iter().enumerate().filter(|x| x.1 == &0).map(|x| x.0).nth(0);
                     let strend = match length_option {
                         Some(val) => sptr as usize + val as usize + info.strings_offset as usize,
