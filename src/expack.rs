@@ -97,7 +97,8 @@ impl FileType {
 pub enum GameExpansion {
     FFXIV,
     EX1,
-    EX2
+    EX2,
+    EX3,
 }
 
 impl GameExpansion {
@@ -111,6 +112,7 @@ impl GameExpansion {
             "ffxiv" => Ok(GameExpansion::FFXIV),
             "ex1" => Ok(GameExpansion::EX1),
             "ex2" => Ok(GameExpansion::EX2),
+            "ex3" => Ok(GameExpansion::EX3),
             _ => Err(FFXIVError::UnknownExpansion(expath_str.clone()))
         }
     }
@@ -120,6 +122,7 @@ impl GameExpansion {
             GameExpansion::FFXIV => String::from("00"),
             GameExpansion::EX1 => String::from("01"),
             GameExpansion::EX2 => String::from("02"),
+            GameExpansion::EX3 => String::from("03"),
         }
     }
 
@@ -128,6 +131,7 @@ impl GameExpansion {
             GameExpansion::FFXIV => String::from("ffxiv"),
             GameExpansion::EX1 => String::from("ex1"),
             GameExpansion::EX2 => String::from("ex2"),
+            GameExpansion::EX3 => String::from("ex3"),
         }
     }
 
@@ -136,6 +140,7 @@ impl GameExpansion {
             GameExpansion::FFXIV => 0x00,
             GameExpansion::EX1 => 0x01,
             GameExpansion::EX2 => 0x02,
+            GameExpansion::EX3 => 0x03,
         }
     }
 }
