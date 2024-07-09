@@ -100,6 +100,7 @@ pub enum GameExpansion {
     EX2,
     EX3,
     EX4,
+    EX5,
 }
 
 impl GameExpansion {
@@ -115,6 +116,7 @@ impl GameExpansion {
             "ex2" => Ok(GameExpansion::EX2),
             "ex3" => Ok(GameExpansion::EX3),
             "ex4" => Ok(GameExpansion::EX4),
+            "ex5" => Ok(GameExpansion::EX5),
             _ => Err(FFXIVError::UnknownExpansion(expath_str.clone()))
         }
     }
@@ -126,6 +128,7 @@ impl GameExpansion {
             GameExpansion::EX2 => String::from("02"),
             GameExpansion::EX3 => String::from("03"),
             GameExpansion::EX4 => String::from("04"),
+            GameExpansion::EX5 => String::from("05"),
         }
     }
 
@@ -136,6 +139,7 @@ impl GameExpansion {
             GameExpansion::EX2 => String::from("ex2"),
             GameExpansion::EX3 => String::from("ex3"),
             GameExpansion::EX4 => String::from("ex4"),
+            GameExpansion::EX5 => String::from("ex5"),
         }
     }
 
@@ -146,6 +150,7 @@ impl GameExpansion {
             GameExpansion::EX2 => 0x02,
             GameExpansion::EX3 => 0x03,
             GameExpansion::EX4 => 0x04,
+            GameExpansion::EX5 => 0x05,
         }
     }
 }
